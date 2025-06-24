@@ -77,7 +77,6 @@ class InstagramImageGenerator {
         ctx.globalAlpha = 1;
     }
 
-    // OPRAVA: Metoda pro text - zatím nepoužíváme
     addTitleToSlide(ctx, title) {
         // ZATÍM NEPOUŽÍVÁME - způsobuje problémy s načítáním obrázků
         console.log('Title method called but not executed to avoid image loading issues');
@@ -648,65 +647,86 @@ class AITextEditor {
         this.createPreviewSlide2(ctx2);
     }
 
-    // OPRAVA: Slide 1 bez textu - jen pixel art obrázek
+    // OPRAVA: Robustní načítání obrázků podle search results [6]
     async createPreviewSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        console.log('🎮 Creating preview slide 1 with PIXEL ART only (no text)...');
+        console.log('🎮 Creating preview slide 1 with PIXEL ART (robust image loading)...');
         
         try {
             if (this.currentInstagramPost?.backgroundImageUrl) {
-                console.log('🎮 Loading pixel art background image...');
+                console.log('🎮 Loading pixel art background image:', this.currentInstagramPost.backgroundImageUrl);
                 
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
+                // OPRAVA: Použij robustní načítání podle search results [6]
+                const imageLoaded = await this.loadImageRobustly(this.currentInstagramPost.backgroundImageUrl);
                 
-                const imageLoaded = await new Promise((resolve, reject) => {
-                    let resolved = false;
-                    
-                    img.onload = () => {
-                        if (!resolved) {
-                            resolved = true;
-                            console.log('✅ Pixel art background image loaded successfully');
-                            // OPRAVA: Jen obrázek, žádný text
-                            ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
-                            resolve(true);
-                        }
-                    };
-                    
-                    img.onerror = (error) => {
-                        if (!resolved) {
-                            resolved = true;
-                            console.log('❌ Pixel art background image failed to load, using gradient');
-                            this.imageGenerator.createGradientBackground(ctx);
-                            resolve(false);
-                        }
-                    };
-                    
-                    setTimeout(() => {
-                        if (!resolved) {
-                            resolved = true;
-                            console.log('⏰ Pixel art image loading timeout, using gradient');
-                            this.imageGenerator.createGradientBackground(ctx);
-                            resolve(false);
-                        }
-                    }, 15000);
-                    
-                    img.src = this.currentInstagramPost.backgroundImageUrl;
-                });
+                if (imageLoaded.success) {
+                    console.log('✅ Pixel art image loaded successfully');
+                    ctx.drawImage(imageLoaded.image, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                } else {
+                    console.log('❌ Failed to load image, using gradient');
+                    this.imageGenerator.createGradientBackground(ctx);
+                }
                 
             } else {
                 console.log('📐 No background image URL, using gradient');
                 this.imageGenerator.createGradientBackground(ctx);
             }
             
-            // OPRAVA: ŽÁDNÝ TEXT - jen čistý obrázek
+            // ŽÁDNÝ TEXT - jen čistý obrázek
             console.log('✅ Preview slide 1 created (PIXEL ART only, no text overlay)');
             
         } catch (error) {
             console.error('❌ Error creating preview slide 1:', error);
             this.imageGenerator.createGradientBackground(ctx);
         }
+    }
+
+    // OPRAVA: Robustní metoda pro načítání obrázků podle search results [6]
+    async loadImageRobustly(imageUrl) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            let resolved = false;
+            
+            // OPRAVA: Podle search results [6] - použij onload event
+            img.onload = function() {
+                if (!resolved) {
+                    resolved = true;
+                    console.log('✅ Image onload event fired successfully');
+                    resolve({ success: true, image: img });
+                }
+            };
+            
+            img.onerror = function(error) {
+                if (!resolved) {
+                    resolved = true;
+                    console.log('❌ Image onerror event fired:', error);
+                    resolve({ success: false, error: error });
+                }
+            };
+            
+            // OPRAVA: Timeout podle search results [6]
+            setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    console.log('⏰ Image loading timeout after 20 seconds');
+                    resolve({ success: false, error: 'timeout' });
+                }
+            }, 20000);
+            
+            // OPRAVA: Nastav CORS podle search results [6]
+            if (imageUrl.startsWith('data:')) {
+                // Base64 obrázek - nepotřebuje CORS
+                img.crossOrigin = undefined;
+            } else {
+                // Externí URL - nastav CORS
+                img.crossOrigin = 'anonymous';
+            }
+            
+            // OPRAVA: Nastav src až po nastavení event handlerů podle search results [6]
+            console.log('🔗 Setting image src:', imageUrl.substring(0, 100) + '...');
+            img.src = imageUrl;
+        });
     }
 
     createPreviewSlide2(ctx) {
@@ -845,32 +865,24 @@ class AITextEditor {
         });
     }
 
-    // OPRAVA: Full-size slide bez textu
+    // OPRAVA: Full-size slide s robustním načítáním
     async createFullSizeSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         try {
             if (this.currentInstagramPost.backgroundImageUrl) {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
+                const imageLoaded = await this.loadImageRobustly(this.currentInstagramPost.backgroundImageUrl);
                 
-                await new Promise((resolve, reject) => {
-                    img.onload = () => {
-                        // OPRAVA: Jen obrázek, žádný text
-                        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
-                        resolve();
-                    };
-                    img.onerror = () => {
-                        this.imageGenerator.createGradientBackground(ctx);
-                        resolve();
-                    };
-                    img.src = this.currentInstagramPost.backgroundImageUrl;
-                });
+                if (imageLoaded.success) {
+                    ctx.drawImage(imageLoaded.image, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                } else {
+                    this.imageGenerator.createGradientBackground(ctx);
+                }
             } else {
                 this.imageGenerator.createGradientBackground(ctx);
             }
             
-            // OPRAVA: ŽÁDNÝ TEXT - jen čistý obrázek
+            // ŽÁDNÝ TEXT - jen čistý obrázek
             
         } catch (error) {
             console.error('Error creating full-size slide 1:', error);
@@ -1171,9 +1183,9 @@ class AITextEditor {
         await this.processAIAction('custom', prompt);
     }
 
-    // OPRAVA: Instagram carousel funkce s pixel art stylem - bez textu na prvním slide
+    // OPRAVA: Instagram carousel funkce s pixel art stylem
     async processInstagramImage() {
-        console.log('🎮 Processing Instagram carousel with PIXEL ART style (no text overlay):', this.selectedText);
+        console.log('🎮 Processing Instagram carousel with PIXEL ART style (robust loading):', this.selectedText);
         
         if (!this.selectedText) {
             this.showError('Musíte vybrat text pro vytvoření Instagram carousel');
@@ -1181,7 +1193,7 @@ class AITextEditor {
         }
         
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s pixel art ilustrací (bez textu na pozadí)...';
+        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s pixel art ilustrací (robustní načítání)...';
 
         try {
             const response = await fetch('/api/instagram-image', {
@@ -1215,7 +1227,7 @@ class AITextEditor {
     }
 
     async showInstagramPreview(data) {
-        console.log('🎮 Showing Instagram preview with PIXEL ART (no text overlay):', data);
+        console.log('🎮 Showing Instagram preview with PIXEL ART (robust loading):', data);
         
         this.currentInstagramPost = {
             id: null,
@@ -1239,7 +1251,7 @@ class AITextEditor {
 
         this.showInstagramSidebar();
         await this.updateInstagramPreview();
-        this.showNotification('Instagram carousel vygenerován s pixel art stylem (čistý obrázek bez textu)!');
+        this.showNotification('Instagram carousel vygenerován s pixel art stylem (robustní načítání obrázků)!');
     }
 
     async processAIAction(action, customPrompt = '') {
@@ -1426,15 +1438,25 @@ document.addEventListener('DOMContentLoaded', () => {
     new AITextEditor();
 });
 
-// Debug funkce pro testování pixel art bez textu
-window.testPixelArtOnly = function() {
-    console.log('🎮 Testing pixel art Instagram carousel (no text overlay)...');
+// Debug funkce pro testování robustního načítání
+window.testRobustImageLoading = function() {
+    console.log('🧪 Testing robust image loading...');
     
     if (globalEditor) {
-        globalEditor.selectedText = 'Test text pro pixel art Instagram carousel bez textu';
+        globalEditor.selectedText = 'Test text pro robustní načítání pixel art obrázků';
         globalEditor.processInstagramImage();
-        console.log('✅ Pixel art Instagram carousel test triggered (image only)');
+        console.log('✅ Robust image loading test triggered');
     } else {
         console.error('❌ Global editor not found');
+    }
+};
+
+window.testImageLoadMethod = async function() {
+    console.log('🧪 Testing loadImageRobustly method...');
+    
+    if (globalEditor) {
+        const testUrl = 'https://picsum.photos/1080/1350?random=' + Date.now();
+        const result = await globalEditor.loadImageRobustly(testUrl);
+        console.log('Test result:', result);
     }
 };
