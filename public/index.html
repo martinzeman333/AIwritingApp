@@ -13,41 +13,29 @@
         <!-- Left Sidebar - Library -->
         <aside class="library-sidebar">
             <div class="library-header">
-                <h3>Library</h3>
+                <h3>LIBRARY</h3>
             </div>
             
             <div class="library-section">
-                <div class="section-item active">
+                <div class="section-item active" data-filter="all">
                     <span class="icon">📄</span>
                     <span>All</span>
                 </div>
-                <div class="section-item">
+                <div class="section-item" data-filter="recent">
                     <span class="icon">🕒</span>
                     <span>Last 7 Days</span>
                 </div>
-                <div class="section-item">
+                <div class="section-item" data-filter="trash">
                     <span class="icon">🗑️</span>
                     <span>Trash</span>
                 </div>
             </div>
 
             <div class="library-section">
-                <h4>Projects</h4>
-                <div class="section-item">
+                <h4>PROJECTS</h4>
+                <div class="section-item" id="newProjectBtn">
                     <span class="icon">➕</span>
                     <span>New Project...</span>
-                </div>
-            </div>
-
-            <div class="library-section">
-                <h4>iCloud</h4>
-                <div class="section-item">
-                    <span class="icon">📥</span>
-                    <span>Inbox</span>
-                </div>
-                <div class="section-item expanded">
-                    <span class="icon">📚</span>
-                    <span>AI Editor</span>
                 </div>
             </div>
         </aside>
@@ -84,6 +72,50 @@
                 <div id="editor" contenteditable="true" placeholder="Začni psát... Klikni pravým tlačítkem pro AI asistenta"></div>
             </div>
         </main>
+
+        <!-- Right Sidebar - Instagram Preview -->
+        <aside class="instagram-sidebar hidden" id="instagramSidebar">
+            <div class="instagram-header">
+                <h3>📸 Instagram Preview</h3>
+                <button class="close-sidebar" id="closeInstagramSidebar">×</button>
+            </div>
+            
+            <div class="instagram-preview-content">
+                <div class="slides-container">
+                    <div class="slide-preview" id="slidePreview1">
+                        <canvas id="previewCanvas1" width="270" height="337"></canvas>
+                        <div class="slide-label">Slide 1: Obrázek + Nadpis</div>
+                    </div>
+                    <div class="slide-preview" id="slidePreview2">
+                        <canvas id="previewCanvas2" width="270" height="337"></canvas>
+                        <div class="slide-label">Slide 2: Text</div>
+                    </div>
+                </div>
+
+                <div class="instagram-editor">
+                    <div class="editor-section">
+                        <label>📝 Text příspěvku:</label>
+                        <textarea id="instagramText" placeholder="Upravte text příspěvku..."></textarea>
+                    </div>
+                    
+                    <div class="editor-section">
+                        <label>🏷️ Hashtags:</label>
+                        <textarea id="instagramHashtags" placeholder="#hashtag1 #hashtag2 #hashtag3"></textarea>
+                    </div>
+
+                    <div class="editor-section">
+                        <label>🎨 Popis pro AI obrázek:</label>
+                        <textarea id="instagramImagePrompt" placeholder="Popište, jak má vypadat fotografie..."></textarea>
+                        <button id="regenerateInstagramImage" class="btn-secondary">🔄 Regenerovat obrázek</button>
+                    </div>
+
+                    <div class="instagram-actions">
+                        <button id="saveInstagramPost" class="btn-primary">💾 Uložit Instagram post</button>
+                        <button id="downloadInstagramSlides" class="btn-secondary">📥 Stáhnout slides</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
 
         <!-- Kontextové menu -->
         <div id="contextMenu" class="context-menu hidden">
