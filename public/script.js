@@ -77,10 +77,11 @@ class InstagramImageGenerator {
         ctx.globalAlpha = 1;
     }
 
+    // OPRAVA: Nadpis umístěný ve spodní části obrázku
     addTitleToSlide(ctx, title) {
         ctx.font = 'bold 90px Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        ctx.textBaseline = 'bottom'; // OPRAVA: Změněno z 'middle' na 'bottom'
 
         ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
         ctx.shadowBlur = 25;
@@ -94,7 +95,10 @@ class InstagramImageGenerator {
         const maxWidth = ctx.canvas.width * 0.85;
         const lines = this.wrapText(ctx, title, maxWidth);
         const lineHeight = 110;
-        const startY = ctx.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+        
+        // OPRAVA: Umístění textu ve spodní části s paddingem
+        const bottomPadding = 80; // Padding od spodního okraje
+        const startY = ctx.canvas.height - bottomPadding - (lines.length - 1) * lineHeight;
 
         lines.forEach((line, index) => {
             const y = startY + index * lineHeight;
@@ -406,7 +410,7 @@ class AITextEditor {
     initializeEventListeners() {
         console.log('Initializing event listeners...');
         
-        // Context menu - OPRAVA
+        // Context menu
         this.editor.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             console.log('Context menu triggered');
@@ -419,7 +423,7 @@ class AITextEditor {
             }
         });
         
-        // Menu items - OPRAVA
+        // Menu items
         this.setupMenuItems();
         
         // Library sidebar filters
@@ -435,13 +439,13 @@ class AITextEditor {
             });
         }
 
-        // Header buttons - OPRAVA
+        // Header buttons
         this.setupHeaderButtons();
         
         // Modal buttons
         this.setupModalButtons();
 
-        // Instagram sidebar - OPRAVA
+        // Instagram sidebar
         this.setupInstagramSidebar();
 
         // Editor events
@@ -473,11 +477,9 @@ class AITextEditor {
             menuItems.forEach((item, index) => {
                 console.log(`Setting up menu item ${index}:`, item.dataset.action);
                 
-                // OPRAVA: Klonuj element pro odstranění starých listenerů
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
+                item.removeEventListener('click', this.handleMenuClick);
                 
-                newItem.addEventListener('click', (e) => {
+                item.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     console.log('Menu item clicked:', e.currentTarget.dataset.action);
@@ -495,11 +497,7 @@ class AITextEditor {
             filterItems.forEach((item, index) => {
                 console.log(`Setting up filter ${index}:`, item.dataset.filter);
                 
-                // OPRAVA: Klonuj element
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
-                
-                newItem.addEventListener('click', (e) => {
+                item.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     console.log('Filter clicked:', e.currentTarget.dataset.filter);
@@ -515,11 +513,7 @@ class AITextEditor {
         const clearBtn = document.getElementById('clearBtn');
         
         if (saveBtn) {
-            // OPRAVA: Klonuj tlačítko
-            const newSaveBtn = saveBtn.cloneNode(true);
-            saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-            
-            newSaveBtn.addEventListener('click', (e) => {
+            saveBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 console.log('Save button clicked');
                 this.showSaveModal();
@@ -527,10 +521,7 @@ class AITextEditor {
         }
         
         if (newBtn) {
-            const newNewBtn = newBtn.cloneNode(true);
-            newBtn.parentNode.replaceChild(newNewBtn, newBtn);
-            
-            newNewBtn.addEventListener('click', (e) => {
+            newBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 console.log('New button clicked');
                 this.newArticle();
@@ -538,10 +529,7 @@ class AITextEditor {
         }
         
         if (clearBtn) {
-            const newClearBtn = clearBtn.cloneNode(true);
-            clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
-            
-            newClearBtn.addEventListener('click', (e) => {
+            clearBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 console.log('Clear button clicked');
                 this.clearEditor();
@@ -662,17 +650,12 @@ class AITextEditor {
     }
 
     showInstagramSidebar() {
-        console.log('📸 Showing Instagram sidebar');
         if (this.instagramSidebar) {
             this.instagramSidebar.classList.remove('hidden');
-            console.log('✅ Instagram sidebar should be visible now');
-        } else {
-            console.error('❌ Instagram sidebar element not found');
         }
     }
 
     hideInstagramSidebar() {
-        console.log('📸 Hide Instagram sidebar');
         if (this.instagramSidebar) {
             this.instagramSidebar.classList.add('hidden');
         }
@@ -694,35 +677,59 @@ class AITextEditor {
         this.createPreviewSlide2(ctx2);
     }
 
+    // OPRAVA: Lepší handling obrázků s debug informacemi
     async createPreviewSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         try {
             if (this.currentInstagramPost.backgroundImageUrl) {
+                console.log('🖼️ Loading background image:', this.currentInstagramPost.backgroundImageUrl);
+                
                 const img = new Image();
-                img.crossOrigin = 'anonymous';
+                
+                // OPRAVA: Lepší handling CORS
+                if (this.currentInstagramPost.backgroundImageUrl.startsWith('data:')) {
+                    img.crossOrigin = undefined;
+                } else {
+                    img.crossOrigin = 'anonymous';
+                }
                 
                 await new Promise((resolve, reject) => {
                     img.onload = () => {
+                        console.log('✅ Background image loaded successfully');
                         ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
                         resolve();
                     };
-                    img.onerror = () => {
+                    
+                    img.onerror = (error) => {
+                        console.log('❌ Background image failed to load, using gradient');
+                        console.error('Image error:', error);
                         this.imageGenerator.createGradientBackground(ctx);
                         resolve();
                     };
+                    
+                    // OPRAVA: Timeout pro případ, že se obrázek nenačte
+                    setTimeout(() => {
+                        console.log('⏰ Image loading timeout, using gradient');
+                        this.imageGenerator.createGradientBackground(ctx);
+                        resolve();
+                    }, 10000);
+                    
                     img.src = this.currentInstagramPost.backgroundImageUrl;
                 });
             } else {
+                console.log('📐 No background image, using gradient');
                 this.imageGenerator.createGradientBackground(ctx);
             }
             
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            // OPRAVA: Mírnější overlay pro lepší čitelnost
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             
+            // OPRAVA: Text umístěný ve spodní části s menším fontem pro preview
             ctx.font = 'bold 22px Arial, sans-serif';
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
+            ctx.textBaseline = 'bottom'; // OPRAVA: Změněno na bottom
             ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
             ctx.shadowBlur = 6;
             ctx.shadowOffsetX = 2;
@@ -734,7 +741,10 @@ class AITextEditor {
             const maxWidth = ctx.canvas.width * 0.85;
             const lines = this.imageGenerator.wrapText(ctx, this.currentInstagramPost.title, maxWidth);
             const lineHeight = 28;
-            const startY = ctx.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+            
+            // OPRAVA: Umístění textu ve spodní části
+            const bottomPadding = 20;
+            const startY = ctx.canvas.height - bottomPadding - (lines.length - 1) * lineHeight;
 
             lines.forEach((line, index) => {
                 const y = startY + index * lineHeight;
@@ -748,7 +758,8 @@ class AITextEditor {
             ctx.shadowOffsetY = 0;
             
         } catch (error) {
-            console.error('Error creating preview slide 1:', error);
+            console.error('❌ Error creating preview slide 1:', error);
+            this.imageGenerator.createGradientBackground(ctx);
         }
     }
 
@@ -789,7 +800,7 @@ class AITextEditor {
         if (!newPrompt) return;
 
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Regeneruji realistickou fotografii...';
+        document.getElementById('loadingText').textContent = 'Regeneruji komixovou ilustraci...';
 
         try {
             const response = await fetch('/api/generate-image', {
@@ -798,7 +809,7 @@ class AITextEditor {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    prompt: `${newPrompt}, realistic photography, high quality, professional photo, photorealistic, detailed, suitable for Instagram post, natural lighting`
+                    prompt: `${newPrompt}, comic book art style, vibrant colors, cartoon illustration, graphic novel style, detailed comic book drawing, professional comic art`
                 })
             });
 
@@ -808,7 +819,7 @@ class AITextEditor {
                 this.currentInstagramPost.backgroundImageUrl = data.imageUrl;
                 this.currentInstagramPost.imageDescription = newPrompt;
                 await this.updateInstagramPreview();
-                this.showNotification(`Realistická fotografie regenerována (${data.generationMethod})`);
+                this.showNotification(`Komixová ilustrace regenerována (${data.generationMethod})`);
             } else {
                 this.showError('Chyba při regeneraci obrázku');
             }
@@ -887,13 +898,19 @@ class AITextEditor {
         });
     }
 
+    // OPRAVA: Full-size slide s textem ve spodní části
     async createFullSizeSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         try {
             if (this.currentInstagramPost.backgroundImageUrl) {
                 const img = new Image();
-                img.crossOrigin = 'anonymous';
+                
+                if (this.currentInstagramPost.backgroundImageUrl.startsWith('data:')) {
+                    img.crossOrigin = undefined;
+                } else {
+                    img.crossOrigin = 'anonymous';
+                }
                 
                 await new Promise((resolve, reject) => {
                     img.onload = () => {
@@ -910,9 +927,11 @@ class AITextEditor {
                 this.imageGenerator.createGradientBackground(ctx);
             }
             
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            // Mírnější overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             
+            // OPRAVA: Použij metodu s textem ve spodní části
             this.imageGenerator.addTitleToSlide(ctx, this.currentInstagramPost.title);
             
         } catch (error) {
@@ -926,6 +945,42 @@ class AITextEditor {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         this.imageGenerator.createAbstractBackground(ctx);
         this.imageGenerator.addTextToSlide(ctx, this.currentInstagramPost.text);
+    }
+
+    // OPRAVA: Debug metoda pro testování obrázků
+    async testImageLoading() {
+        if (!this.currentInstagramPost?.backgroundImageUrl) {
+            console.log('❌ No background image URL to test');
+            return;
+        }
+        
+        console.log('🧪 Testing image loading...');
+        console.log('URL:', this.currentInstagramPost.backgroundImageUrl);
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+            console.log('✅ Image loads successfully');
+            console.log('Dimensions:', img.width, 'x', img.height);
+        };
+        
+        img.onerror = (error) => {
+            console.log('❌ Image failed to load');
+            console.error('Error:', error);
+            
+            // Zkus bez CORS
+            const img2 = new Image();
+            img2.onload = () => {
+                console.log('✅ Image loads without CORS');
+            };
+            img2.onerror = () => {
+                console.log('❌ Image fails even without CORS');
+            };
+            img2.src = this.currentInstagramPost.backgroundImageUrl;
+        };
+        
+        img.src = this.currentInstagramPost.backgroundImageUrl;
     }
 
     showSaveModal() {
@@ -1191,7 +1246,7 @@ class AITextEditor {
         if (action === 'generate') {
             this.showPromptModal();
         } else if (action === 'instagram') {
-            this.processInstagramImage(); // OPRAVA: Volá správnou metodu
+            this.processInstagramImage();
         } else {
             this.processAIAction(action);
         }
@@ -1215,18 +1270,17 @@ class AITextEditor {
         await this.processAIAction('custom', prompt);
     }
 
-    // OPRAVA: Kompletní implementace Instagram carousel funkce
+    // Instagram carousel funkce
     async processInstagramImage() {
         console.log('📸 Processing Instagram carousel for text:', this.selectedText);
         
-        // OPRAVA: Kontrola vybraného textu
         if (!this.selectedText) {
             this.showError('Musíte vybrat text pro vytvoření Instagram carousel');
             return;
         }
         
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s realistickou fotografií...';
+        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s komixovou ilustrací...';
 
         try {
             const response = await fetch('/api/instagram-image', {
@@ -1262,7 +1316,6 @@ class AITextEditor {
     async showInstagramPreview(data) {
         console.log('📸 Showing Instagram preview with data:', data);
         
-        // Create Instagram post object
         this.currentInstagramPost = {
             id: null,
             title: data.title,
@@ -1273,7 +1326,6 @@ class AITextEditor {
             timestamp: null
         };
 
-        // Fill form fields
         const instagramText = document.getElementById('instagramText');
         const instagramHashtags = document.getElementById('instagramHashtags');
         const instagramImagePrompt = document.getElementById('instagramImagePrompt');
@@ -1282,12 +1334,8 @@ class AITextEditor {
         if (instagramHashtags) instagramHashtags.value = data.hashtags;
         if (instagramImagePrompt) instagramImagePrompt.value = data.imageDescription;
 
-        // Show sidebar
         this.showInstagramSidebar();
-
-        // Update preview
         await this.updateInstagramPreview();
-
         this.showNotification('Instagram carousel vygenerován! Můžete ho upravit v pravém panelu.');
     }
 
@@ -1476,6 +1524,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Debug funkce
+window.testImageLoading = function() {
+    console.log('🧪 Testing image loading...');
+    
+    if (globalEditor) {
+        globalEditor.testImageLoading();
+    } else {
+        console.error('❌ Global editor not found');
+    }
+};
+
 window.testInstagramCarousel = function() {
     console.log('🧪 Testing Instagram carousel...');
     
