@@ -258,6 +258,90 @@ body {
     gap: 12px;
 }
 
+/* Formatting Toolbar */
+.formatting-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 40px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-right: 1px solid var(--border);
+    padding-right: 16px;
+}
+
+.toolbar-group:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+.toolbar-select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    min-width: 80px;
+    cursor: pointer;
+}
+
+.toolbar-select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.toolbar-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+    background: var(--accent);
+    color: white;
+}
+
+.toolbar-btn.active {
+    background: var(--accent);
+    color: white;
+}
+
+.color-picker {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: none;
+}
+
+.color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-picker::-webkit-color-swatch {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
 .btn-primary, .btn-secondary {
     padding: 6px 12px;
     border: none;
@@ -615,6 +699,11 @@ body {
     .instagram-sidebar {
         width: 300px;
     }
+    
+    .formatting-toolbar {
+        padding: 8px 20px;
+        gap: 12px;
+    }
 }
 
 @media (max-width: 1024px) {
@@ -628,6 +717,16 @@ body {
     
     .instagram-sidebar {
         width: 280px;
+    }
+    
+    .formatting-toolbar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .toolbar-group {
+        gap: 2px;
+        padding-right: 8px;
     }
 }
 
@@ -659,6 +758,12 @@ body {
     
     .editor-actions {
         justify-content: center;
+    }
+    
+    .formatting-toolbar {
+        padding: 8px 20px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
     }
     
     .editor-container {
