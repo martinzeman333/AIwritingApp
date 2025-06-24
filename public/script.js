@@ -146,11 +146,11 @@ class AITextEditor {
         // Inicializuj proměnné
         this.initializeProperties();
         
-        // Nastav event listenery
-        this.setupEventListeners();
-        
-        // Načti data
-        this.loadInitialData();
+        // Nastav event listenery s delay
+        setTimeout(() => {
+            this.setupAllEventListeners();
+            this.loadInitialData();
+        }, 300);
         
         // Globální reference pro debug
         globalEditor = this;
@@ -199,8 +199,8 @@ class AITextEditor {
         this.currentFilter = 'all';
     }
 
-    setupEventListeners() {
-        console.log('🎯 Setting up event listeners...');
+    setupAllEventListeners() {
+        console.log('🎯 Setting up all event listeners...');
         
         // OPRAVA: Context menu s více metodami
         this.setupContextMenu();
@@ -211,7 +211,7 @@ class AITextEditor {
         // OPRAVA: Library filters
         this.setupLibraryFilters();
         
-        // OPRAVA: Menu items
+        // OPRAVA: Menu items - KLÍČOVÁ OPRAVA
         this.setupMenuItems();
         
         // Modal buttons
@@ -237,34 +237,26 @@ class AITextEditor {
             return;
         }
 
-        // OPRAVA: Více metod pro context menu
-        
-        // Metoda 1: Standardní contextmenu event
-        this.editor.addEventListener('contextmenu', (e) => {
-            console.log('🖱️ Context menu event triggered');
-            e.preventDefault();
-            e.stopPropagation();
-            this.showContextMenu(e);
-        });
-
-        // Metoda 2: Mousedown pro pravé tlačítko
-        this.editor.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { // Pravé tlačítko
-                console.log('🖱️ Right mouse button down');
+        // OPRAVA: Zabráníme výchozímu context menu na celé stránce
+        document.addEventListener('contextmenu', (e) => {
+            if (this.editor && this.editor.contains(e.target)) {
                 e.preventDefault();
-                // Malé zpoždění pro lepší handling
-                setTimeout(() => {
-                    this.showContextMenu(e);
-                }, 10);
+                e.stopPropagation();
+                console.log('🖱️ Context menu prevented and custom triggered');
+                this.showContextMenu(e);
             }
         });
 
-        // Metoda 3: Mouseup pro pravé tlačítko (fallback)
-        this.editor.addEventListener('mouseup', (e) => {
+        // OPRAVA: Backup metoda pro mousedown
+        this.editor.addEventListener('mousedown', (e) => {
             if (e.button === 2) { // Pravé tlačítko
-                console.log('🖱️ Right mouse button up');
+                console.log('🖱️ Right mouse button detected');
                 e.preventDefault();
-                this.showContextMenu(e);
+                e.stopPropagation();
+                // Malé zpoždění pro lepší handling
+                setTimeout(() => {
+                    this.showContextMenu(e);
+                }, 50);
             }
         });
 
@@ -275,20 +267,12 @@ class AITextEditor {
             }
         });
 
-        // Zabránění výchozímu context menu na celé stránce
-        document.addEventListener('contextmenu', (e) => {
-            if (this.editor && this.editor.contains(e.target)) {
-                e.preventDefault();
-            }
-        });
-
         console.log('✅ Context menu setup complete');
     }
 
     setupHeaderButtons() {
         console.log('🔘 Setting up header buttons...');
         
-        // OPRAVA: Použij addEventListener místo onclick
         const buttons = [
             { id: 'saveBtn', handler: () => this.showSaveModal(), name: 'Save' },
             { id: 'newBtn', handler: () => this.newArticle(), name: 'New' },
@@ -300,7 +284,7 @@ class AITextEditor {
             if (btn) {
                 console.log(`✅ Setting up ${name} button`);
                 
-                // OPRAVA: Odstraň všechny staré event listenery
+                // OPRAVA: Odstraň všechny staré event listenery pomocí klonování
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
                 
@@ -312,7 +296,8 @@ class AITextEditor {
                     handler();
                 });
                 
-                // Ujisti se, že tlačítko je klikatelné
+                // OPRAVA: Ujisti se, že tlačítko je klikatelné
+                newBtn.disabled = false;
                 newBtn.style.pointerEvents = 'auto';
                 newBtn.style.cursor = 'pointer';
                 
@@ -354,30 +339,43 @@ class AITextEditor {
     setupMenuItems() {
         console.log('📋 Setting up menu items...');
         
+        // OPRAVA: Počkáme déle a použijeme robustnější přístup
         setTimeout(() => {
             const menuItems = document.querySelectorAll('.menu-item');
             console.log(`📋 Found ${menuItems.length} menu items`);
             
+            // OPRAVA: Iterujeme přes NodeList správně
             menuItems.forEach((item, index) => {
                 const action = item.dataset.action;
                 console.log(`📋 Setting up menu item ${index}: ${action}`);
                 
-                // OPRAVA: Klonuj element
+                // OPRAVA: Odstraníme všechny staré event listenery
                 const newItem = item.cloneNode(true);
                 item.parentNode.replaceChild(newItem, item);
                 
-                newItem.addEventListener('click', (e) => {
+                // OPRAVA: Přidáme event listener s bind kontextu
+                const clickHandler = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     console.log(`📋 Menu item clicked: ${action}`);
                     this.handleMenuClick(e);
-                });
+                };
                 
-                // Ujisti se, že je klikatelný
+                newItem.addEventListener('click', clickHandler);
+                
+                // OPRAVA: Ujisti se, že je klikatelný
                 newItem.style.pointerEvents = 'auto';
                 newItem.style.cursor = 'pointer';
+                newItem.style.userSelect = 'none';
+                
+                // OPRAVA: Přidej visual feedback
+                newItem.addEventListener('mouseenter', () => {
+                    console.log(`🖱️ Hovering over menu item: ${action}`);
+                });
             });
-        }, 200);
+            
+            console.log('✅ Menu items setup complete');
+        }, 500); // Delší delay
     }
 
     setupModalButtons() {
@@ -393,11 +391,20 @@ class AITextEditor {
         modalButtons.forEach(({ id, handler }) => {
             const btn = document.getElementById(id);
             if (btn) {
-                btn.addEventListener('click', (e) => {
+                // Klonuj pro odstranění starých listenerů
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                newBtn.addEventListener('click', (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     console.log(`🔘 Modal button ${id} clicked`);
                     handler();
                 });
+                
+                newBtn.disabled = false;
+                newBtn.style.pointerEvents = 'auto';
+                newBtn.style.cursor = 'pointer';
             }
         });
     }
@@ -406,13 +413,16 @@ class AITextEditor {
         // Instagram sidebar setup
         const closeBtn = document.getElementById('closeInstagramSidebar');
         if (closeBtn) {
-            closeBtn.addEventListener('click', (e) => {
+            const newCloseBtn = closeBtn.cloneNode(true);
+            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+            
+            newCloseBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.hideInstagramSidebar();
             });
         }
 
-        // Ostatní Instagram tlačítka...
+        // Ostatní Instagram tlačítka
         const instagramButtons = [
             { id: 'regenerateInstagramImage', handler: () => this.regenerateInstagramImage() },
             { id: 'saveInstagramPost', handler: () => this.saveInstagramPost() },
@@ -422,7 +432,10 @@ class AITextEditor {
         instagramButtons.forEach(({ id, handler }) => {
             const btn = document.getElementById(id);
             if (btn) {
-                btn.addEventListener('click', (e) => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                newBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     handler();
                 });
@@ -449,7 +462,10 @@ class AITextEditor {
         toolbarButtons.forEach(({ id, command }) => {
             const btn = document.getElementById(id);
             if (btn) {
-                btn.addEventListener('click', (e) => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                newBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     console.log(`🎨 Toolbar button ${id} clicked`);
                     document.execCommand(command, false, null);
@@ -537,14 +553,16 @@ class AITextEditor {
         
         console.log('📋 Selected text:', this.selectedText ? `"${this.selectedText.substring(0, 50)}..."` : 'none');
         
-        // Update menu items based on selection
-        const menuItems = document.querySelectorAll('.menu-item');
-        menuItems.forEach(item => {
-            const needsSelection = item.hasAttribute('data-needs-selection');
-            if (needsSelection) {
-                item.classList.toggle('disabled', !this.selectedText);
-            }
-        });
+        // OPRAVA: Update menu items based on selection
+        setTimeout(() => {
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => {
+                const needsSelection = item.hasAttribute('data-needs-selection');
+                if (needsSelection) {
+                    item.classList.toggle('disabled', !this.selectedText);
+                }
+            });
+        }, 10);
 
         // Position menu
         const x = Math.min(e.pageX, window.innerWidth - 220); // Prevent overflow
@@ -553,6 +571,7 @@ class AITextEditor {
         this.contextMenu.style.left = x + 'px';
         this.contextMenu.style.top = y + 'px';
         this.contextMenu.style.display = 'block';
+        this.contextMenu.style.zIndex = '9999';
         this.contextMenu.classList.remove('hidden');
         
         console.log('✅ Context menu should be visible now');
@@ -582,12 +601,31 @@ class AITextEditor {
 
         switch (action) {
             case 'generate':
+                console.log('📋 Triggering generate action');
                 this.showPromptModal();
                 break;
             case 'instagram':
+                console.log('📋 Triggering Instagram action');
                 this.processInstagramImage();
                 break;
+            case 'summarize':
+                console.log('📋 Triggering summarize action');
+                this.processAIAction('summarize');
+                break;
+            case 'twitter':
+                console.log('📋 Triggering Twitter action');
+                this.processAIAction('twitter');
+                break;
+            case 'expand':
+                console.log('📋 Triggering expand action');
+                this.processAIAction('expand');
+                break;
+            case 'improve':
+                console.log('📋 Triggering improve action');
+                this.processAIAction('improve');
+                break;
             default:
+                console.log('📋 Triggering default action');
                 this.processAIAction(action);
                 break;
         }
@@ -686,11 +724,18 @@ class AITextEditor {
         alert('Chyba: ' + message);
     }
 
-    // Placeholder methods pro ostatní funkce
+    // Modal methods
     showSaveModal() { 
         console.log('💾 Show save modal');
         if (this.saveModal) {
             this.saveModal.classList.remove('hidden');
+            if (this.articleTitle) {
+                const textContent = this.editor.textContent.trim();
+                const suggestedTitle = textContent.substring(0, 50) + (textContent.length > 50 ? '...' : '');
+                this.articleTitle.value = suggestedTitle;
+                this.articleTitle.focus();
+                this.articleTitle.select();
+            }
         }
     }
     
@@ -698,6 +743,9 @@ class AITextEditor {
         console.log('💾 Hide save modal');
         if (this.saveModal) {
             this.saveModal.classList.add('hidden');
+            if (this.articleTitle) {
+                this.articleTitle.value = '';
+            }
         }
     }
     
@@ -705,6 +753,9 @@ class AITextEditor {
         console.log('✨ Show prompt modal');
         if (this.promptModal) {
             this.promptModal.classList.remove('hidden');
+            if (this.promptInput) {
+                this.promptInput.focus();
+            }
         }
     }
     
@@ -712,6 +763,9 @@ class AITextEditor {
         console.log('❌ Hide modal');
         if (this.promptModal) {
             this.promptModal.classList.add('hidden');
+            if (this.promptInput) {
+                this.promptInput.value = '';
+            }
         }
     }
     
@@ -720,6 +774,8 @@ class AITextEditor {
         if (this.editor) {
             this.editor.innerHTML = '';
             this.updateWordCount();
+            this.currentArticleId = null;
+            this.loadArticlesList();
         }
     }
     
@@ -729,44 +785,197 @@ class AITextEditor {
             this.newArticle();
         }
     }
-    
+
+    async submitPrompt() {
+        console.log('✅ Submit prompt');
+        const prompt = this.promptInput ? this.promptInput.value.trim() : '';
+        if (!prompt) return;
+
+        this.hideModal();
+        await this.processAIAction('custom', prompt);
+    }
+
+    confirmSaveArticle() {
+        console.log('✅ Confirm save article');
+        const title = this.articleTitle ? this.articleTitle.value.trim() : '';
+        const content = this.editor ? this.editor.innerHTML.trim() : '';
+        
+        if (!title) {
+            this.showError('Zadejte název článku');
+            return;
+        }
+        
+        if (!content) {
+            this.showError('Nelze uložit prázdný článek');
+            return;
+        }
+
+        this.saveArticle(title, content);
+        this.hideSaveModal();
+    }
+
+    saveArticle(title, content) {
+        const articles = this.getSavedArticles();
+        const articleId = this.generateUUID();
+        
+        const newArticle = {
+            id: articleId,
+            title: title,
+            content: content,
+            timestamp: new Date().toISOString(),
+            preview: this.generatePreview(content),
+            isTrash: false
+        };
+
+        articles.unshift(newArticle);
+        localStorage.setItem('savedArticles', JSON.stringify(articles));
+        
+        this.loadArticlesList();
+        this.showNotification(`Článek "${title}" byl uložen`);
+        
+        this.currentArticleId = articleId;
+    }
+
+    generatePreview(content) {
+        const textContent = content.replace(/<[^>]*>/g, '').trim();
+        return textContent.substring(0, 150) + (textContent.length > 150 ? '...' : '');
+    }
+
+    getSavedArticles() {
+        const articles = localStorage.getItem('savedArticles');
+        return articles ? JSON.parse(articles) : [];
+    }
+
+    loadArticlesList() {
+        console.log('📚 Load articles list');
+        // Placeholder - implementuj podle potřeby
+    }
+
+    async processAIAction(action, customPrompt = '') {
+        console.log('🤖 Process AI action:', action);
+        
+        this.showLoading();
+
+        try {
+            const response = await fetch('/api/perplexity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: action,
+                    prompt: customPrompt,
+                    selectedText: this.selectedText
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.result) {
+                this.insertAIResult(data.result, action);
+            } else {
+                this.showError(data.error || 'Prázdná odpověď z API');
+            }
+        } catch (error) {
+            console.error('AI action failed:', error);
+            this.showError('Chyba sítě: ' + error.message);
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    insertAIResult(result, action) {
+        console.log('📝 Inserting AI result for action:', action);
+        
+        if (!this.editor) return;
+        
+        this.editor.focus();
+        
+        try {
+            if (action === 'generate' || action === 'custom') {
+                if (this.lastCursorPosition) {
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(this.lastCursorPosition);
+                }
+                
+                document.execCommand('insertText', false, result);
+            } else if (this.selectedText) {
+                document.execCommand('insertText', false, result);
+            } else {
+                const currentContent = this.editor.innerHTML;
+                this.editor.innerHTML = currentContent + '<br>' + result;
+            }
+            
+        } catch (error) {
+            console.error('Error inserting text:', error);
+            this.editor.innerHTML += '<br>' + result;
+        }
+        
+        this.selectedText = '';
+        this.autoSave();
+        this.updateWordCount();
+    }
+
+    showLoading() {
+        if (this.loadingOverlay) {
+            this.loadingOverlay.classList.remove('hidden');
+        }
+    }
+
+    hideLoading() {
+        if (this.loadingOverlay) {
+            this.loadingOverlay.classList.add('hidden');
+        }
+    }
+
+    // Placeholder metody
     processInstagramImage() { console.log('📸 Process Instagram'); }
-    processAIAction(action) { console.log('🤖 Process AI action:', action); }
-    loadArticlesList() { console.log('📚 Load articles list'); }
-    autoSave() { /* Auto save logic */ }
-    saveCursorPosition() { /* Save cursor logic */ }
-    trackSelection() { /* Track selection logic */ }
-    submitPrompt() { console.log('✅ Submit prompt'); }
-    confirmSaveArticle() { console.log('✅ Confirm save'); }
     hideInstagramSidebar() { console.log('📸 Hide Instagram sidebar'); }
     regenerateInstagramImage() { console.log('📸 Regenerate Instagram image'); }
     saveInstagramPost() { console.log('📸 Save Instagram post'); }
     downloadInstagramSlides() { console.log('📸 Download Instagram slides'); }
+    autoSave() { /* Auto save logic */ }
+    saveCursorPosition() { /* Save cursor logic */ }
+    trackSelection() { /* Track selection logic */ }
 }
 
-// OPRAVA: Robustnější inicializace
+// OPRAVA: Robustnější inicializace s více pokusy
 function initializeApp() {
     console.log('🚀 Initializing AI Text Editor...');
+    
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    function tryInitialize() {
+        attempts++;
+        console.log(`🔄 Initialization attempt ${attempts}/${maxAttempts}`);
+        
+        try {
+            new AITextEditor();
+            console.log('✅ App initialized successfully');
+        } catch (error) {
+            console.error(`❌ Initialization attempt ${attempts} failed:`, error);
+            
+            if (attempts < maxAttempts) {
+                setTimeout(tryInitialize, 1000 * attempts); // Exponential backoff
+            } else {
+                console.error('❌ All initialization attempts failed');
+            }
+        }
+    }
     
     // Čekáme na DOM
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                try {
-                    new AITextEditor();
-                } catch (error) {
-                    console.error('❌ Failed to initialize:', error);
-                }
-            }, 200);
+            setTimeout(tryInitialize, 500);
         });
     } else {
-        setTimeout(() => {
-            try {
-                new AITextEditor();
-            } catch (error) {
-                console.error('❌ Failed to initialize:', error);
-            }
-        }, 200);
+        setTimeout(tryInitialize, 500);
     }
 }
 
@@ -779,8 +988,8 @@ window.testContextMenu = function() {
     if (globalEditor && globalEditor.contextMenu) {
         globalEditor.contextMenu.style.left = '100px';
         globalEditor.contextMenu.style.top = '100px';
-        globalEditor.contextMenu.classList.remove('hidden');
         globalEditor.contextMenu.style.display = 'block';
+        globalEditor.contextMenu.classList.remove('hidden');
         console.log('✅ Context menu should be visible');
     } else {
         console.error('❌ Global editor or context menu not found');
@@ -796,4 +1005,14 @@ window.testButtons = function() {
     } else {
         console.error('❌ Save button not found');
     }
+};
+
+window.testMenuItems = function() {
+    console.log('🧪 Testing menu items...');
+    const menuItems = document.querySelectorAll('.menu-item');
+    console.log(`Found ${menuItems.length} menu items`);
+    
+    menuItems.forEach((item, index) => {
+        console.log(`Menu item ${index}:`, item.dataset.action, item);
+    });
 };
