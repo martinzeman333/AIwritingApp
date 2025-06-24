@@ -473,7 +473,7 @@ class AITextEditor {
             menuItems.forEach((item, index) => {
                 console.log(`Setting up menu item ${index}:`, item.dataset.action);
                 
-                // OPRAVA: Odstraň staré event listenery
+                // OPRAVA: Klonuj element pro odstranění starých listenerů
                 const newItem = item.cloneNode(true);
                 item.parentNode.replaceChild(newItem, item);
                 
