@@ -647,83 +647,102 @@ class AITextEditor {
         this.createPreviewSlide2(ctx2);
     }
 
-    // OPRAVA: Přidání debug informací a alternativního zobrazení
+    // OPRAVA: Speciální handling pro OpenAI obrázky
     async createPreviewSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         console.log('🎮 DEBUG: Creating preview slide 1...');
-        console.log('🎮 DEBUG: currentInstagramPost:', this.currentInstagramPost);
         console.log('🎮 DEBUG: backgroundImageUrl:', this.currentInstagramPost?.backgroundImageUrl);
         
-        // OPRAVA: Přidej debug element pro zobrazení URL
+        // OPRAVA: Přidej debug element
         this.addDebugImageInfo();
         
         try {
             if (this.currentInstagramPost?.backgroundImageUrl) {
-                console.log('🎮 DEBUG: Attempting to load image...');
+                console.log('🎮 DEBUG: Attempting to load OpenAI image...');
                 
-                // OPRAVA: Zkus nejdřív jednoduchý způsob
+                // OPRAVA: Speciální handling pro OpenAI blob URLs
+                const isOpenAIImage = this.currentInstagramPost.backgroundImageUrl.includes('oaidalleapiprodscus.blob.core.windows.net');
+                
                 const img = new Image();
-                img.crossOrigin = 'anonymous';
+                
+                // OPRAVA: Pro OpenAI obrázky NEPOUŽÍVEJ crossOrigin
+                if (isOpenAIImage) {
+                    console.log('🎮 DEBUG: OpenAI image detected - NOT setting crossOrigin');
+                    // Nestavíme crossOrigin pro OpenAI obrázky
+                } else {
+                    console.log('🎮 DEBUG: External image - setting crossOrigin');
+                    img.crossOrigin = 'anonymous';
+                }
                 
                 const imageLoaded = await new Promise((resolve) => {
                     let resolved = false;
+                    let timeoutId;
                     
                     img.onload = function() {
                         if (!resolved) {
                             resolved = true;
-                            console.log('✅ DEBUG: Image loaded successfully!');
+                            clearTimeout(timeoutId);
+                            console.log('✅ DEBUG: OpenAI image loaded successfully!');
                             console.log('✅ DEBUG: Image dimensions:', img.width, 'x', img.height);
-                            resolve({ success: true, image: img });
+                            
+                            try {
+                                ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                                console.log('✅ DEBUG: Image drawn to canvas successfully!');
+                                
+                                // OPRAVA: Přidej zelený rámeček pro potvrzení
+                                ctx.strokeStyle = 'lime';
+                                ctx.lineWidth = 8;
+                                ctx.strokeRect(4, 4, ctx.canvas.width - 8, ctx.canvas.height - 8);
+                                
+                                resolve({ success: true, image: img });
+                            } catch (drawError) {
+                                console.log('❌ DEBUG: Error drawing image to canvas:', drawError);
+                                resolve({ success: false, error: drawError });
+                            }
                         }
                     };
                     
                     img.onerror = function(error) {
                         if (!resolved) {
                             resolved = true;
-                            console.log('❌ DEBUG: Image failed to load:', error);
+                            clearTimeout(timeoutId);
+                            console.log('❌ DEBUG: OpenAI image failed to load:', error);
+                            console.log('❌ DEBUG: Image src:', img.src);
                             resolve({ success: false, error: error });
                         }
                     };
                     
-                    setTimeout(() => {
+                    // OPRAVA: Kratší timeout pro rychlejší debug
+                    timeoutId = setTimeout(() => {
                         if (!resolved) {
                             resolved = true;
-                            console.log('⏰ DEBUG: Image loading timeout');
+                            console.log('⏰ DEBUG: Image loading timeout after 15 seconds');
                             resolve({ success: false, error: 'timeout' });
                         }
-                    }, 10000);
+                    }, 15000);
                     
-                    console.log('🔗 DEBUG: Setting image src:', this.currentInstagramPost.backgroundImageUrl);
+                    console.log('🔗 DEBUG: Setting image src...');
                     img.src = this.currentInstagramPost.backgroundImageUrl;
                 });
                 
-                if (imageLoaded.success) {
-                    console.log('✅ DEBUG: Drawing image to canvas...');
-                    ctx.drawImage(imageLoaded.image, 0, 0, ctx.canvas.width, ctx.canvas.height);
-                    
-                    // OPRAVA: Přidej červený rámeček pro potvrzení, že se obrázek nakreslil
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 10;
-                    ctx.strokeRect(5, 5, ctx.canvas.width - 10, ctx.canvas.height - 10);
-                    
-                    console.log('✅ DEBUG: Image drawn to canvas with red border!');
-                } else {
+                if (!imageLoaded.success) {
                     console.log('❌ DEBUG: Using gradient fallback');
                     this.imageGenerator.createGradientBackground(ctx);
                     
-                    // Přidej text pro debug
+                    // Přidej debug text
                     ctx.fillStyle = 'white';
-                    ctx.font = '30px Arial';
+                    ctx.font = '24px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText('IMAGE FAILED TO LOAD', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                    ctx.fillText('OPENAI IMAGE FAILED', ctx.canvas.width / 2, ctx.canvas.height / 2 - 30);
+                    ctx.fillText('Error: ' + (imageLoaded.error || 'unknown'), ctx.canvas.width / 2, ctx.canvas.height / 2 + 30);
                 }
                 
             } else {
                 console.log('❌ DEBUG: No background image URL');
                 this.imageGenerator.createGradientBackground(ctx);
                 
-                // Přidej text pro debug
+                // Přidej debug text
                 ctx.fillStyle = 'white';
                 ctx.font = '30px Arial';
                 ctx.textAlign = 'center';
@@ -734,15 +753,15 @@ class AITextEditor {
             console.error('❌ DEBUG: Error in createPreviewSlide1:', error);
             this.imageGenerator.createGradientBackground(ctx);
             
-            // Přidej text pro debug
-            ctx.fillStyle = 'white';
-            ctx.font = '30px Arial';
+            // Přidej error text
+            ctx.fillStyle = 'red';
+            ctx.font = '24px Arial';
             ctx.textAlign = 'center';
             ctx.fillText('ERROR: ' + error.message, ctx.canvas.width / 2, ctx.canvas.height / 2);
         }
     }
 
-    // OPRAVA: Přidej debug element pro zobrazení informací o obrázku
+    // OPRAVA: Vylepšený debug element
     addDebugImageInfo() {
         let debugDiv = document.getElementById('debugImageInfo');
         if (!debugDiv) {
@@ -754,34 +773,95 @@ class AITextEditor {
                 right: 20px;
                 background: black;
                 color: white;
-                padding: 10px;
+                padding: 15px;
                 border-radius: 5px;
                 z-index: 5000;
                 font-family: monospace;
-                font-size: 12px;
-                max-width: 300px;
+                font-size: 11px;
+                max-width: 350px;
                 word-break: break-all;
+                border: 2px solid lime;
             `;
             document.body.appendChild(debugDiv);
         }
         
         if (this.currentInstagramPost?.backgroundImageUrl) {
+            const isOpenAI = this.currentInstagramPost.backgroundImageUrl.includes('oaidalleapiprodscus.blob.core.windows.net');
+            
             debugDiv.innerHTML = `
-                <strong>DEBUG INFO:</strong><br>
-                URL: ${this.currentInstagramPost.backgroundImageUrl.substring(0, 100)}...<br>
-                Type: ${this.currentInstagramPost.backgroundImageUrl.startsWith('data:') ? 'base64' : 'external'}<br>
-                Length: ${this.currentInstagramPost.backgroundImageUrl.length}<br>
-                <button onclick="window.open('${this.currentInstagramPost.backgroundImageUrl}', '_blank')">Otevřít obrázek</button><br>
-                <button onclick="document.getElementById('debugImageInfo').remove()">Zavřít</button>
+                <strong>🎮 OPENAI DEBUG INFO:</strong><br>
+                <strong>Type:</strong> ${isOpenAI ? 'OpenAI DALL-E' : 'External'}<br>
+                <strong>URL:</strong> ${this.currentInstagramPost.backgroundImageUrl.substring(0, 80)}...<br>
+                <strong>Length:</strong> ${this.currentInstagramPost.backgroundImageUrl.length}<br>
+                <strong>CORS:</strong> ${isOpenAI ? 'DISABLED (OpenAI)' : 'ENABLED'}<br>
+                <button onclick="window.open('${this.currentInstagramPost.backgroundImageUrl}', '_blank')" 
+                        style="background:lime;color:black;padding:5px;margin:5px 0;border:none;cursor:pointer;">
+                    🖼️ Otevřít obrázek
+                </button><br>
+                <button onclick="globalEditor.testDirectImageLoad()" 
+                        style="background:orange;color:black;padding:5px;margin:5px 0;border:none;cursor:pointer;">
+                    🧪 Test načítání
+                </button><br>
+                <button onclick="document.getElementById('debugImageInfo').remove()" 
+                        style="background:red;color:white;padding:5px;margin:5px 0;border:none;cursor:pointer;">
+                    ❌ Zavřít
+                </button>
             `;
         } else {
             debugDiv.innerHTML = `
-                <strong>DEBUG INFO:</strong><br>
+                <strong>🎮 DEBUG INFO:</strong><br>
                 ❌ NO IMAGE URL FOUND<br>
                 currentInstagramPost: ${this.currentInstagramPost ? 'exists' : 'null'}<br>
-                <button onclick="document.getElementById('debugImageInfo').remove()">Zavřít</button>
+                <button onclick="document.getElementById('debugImageInfo').remove()" 
+                        style="background:red;color:white;padding:5px;margin:5px 0;border:none;cursor:pointer;">
+                    ❌ Zavřít
+                </button>
             `;
         }
+    }
+
+    // OPRAVA: Test metoda pro přímé načítání obrázku
+    async testDirectImageLoad() {
+        if (!this.currentInstagramPost?.backgroundImageUrl) {
+            console.log('❌ No image URL to test');
+            return;
+        }
+        
+        console.log('🧪 Testing direct image load...');
+        
+        // Vytvoř test img element
+        const testImg = document.createElement('img');
+        testImg.style.cssText = `
+            position: fixed;
+            top: 50px;
+            left: 50px;
+            max-width: 300px;
+            max-height: 300px;
+            border: 3px solid lime;
+            z-index: 6000;
+            background: black;
+        `;
+        
+        testImg.onload = function() {
+            console.log('✅ Direct image load successful!');
+            console.log('✅ Image dimensions:', testImg.naturalWidth, 'x', testImg.naturalHeight);
+        };
+        
+        testImg.onerror = function(error) {
+            console.log('❌ Direct image load failed:', error);
+            testImg.alt = 'LOAD FAILED';
+            testImg.style.background = 'red';
+        };
+        
+        testImg.src = this.currentInstagramPost.backgroundImageUrl;
+        document.body.appendChild(testImg);
+        
+        // Odstraň po 10 sekundách
+        setTimeout(() => {
+            if (testImg.parentNode) {
+                testImg.parentNode.removeChild(testImg);
+            }
+        }, 10000);
     }
 
     createPreviewSlide2(ctx) {
@@ -841,7 +921,7 @@ class AITextEditor {
             console.log('🎮 DEBUG: Response data:', data);
             
             if (data.success && data.imageUrl) {
-                console.log('🎮 DEBUG: New image URL received:', data.imageUrl);
+                console.log('🎮 DEBUG: New OpenAI image URL received:', data.imageUrl);
                 this.currentInstagramPost.backgroundImageUrl = data.imageUrl;
                 this.currentInstagramPost.imageDescription = newPrompt;
                 
@@ -930,13 +1010,19 @@ class AITextEditor {
         });
     }
 
+    // OPRAVA: Full-size slide s OpenAI handling
     async createFullSizeSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         try {
             if (this.currentInstagramPost.backgroundImageUrl) {
                 const img = new Image();
-                img.crossOrigin = 'anonymous';
+                
+                // OPRAVA: Pro OpenAI obrázky nepoužívej crossOrigin
+                const isOpenAIImage = this.currentInstagramPost.backgroundImageUrl.includes('oaidalleapiprodscus.blob.core.windows.net');
+                if (!isOpenAIImage) {
+                    img.crossOrigin = 'anonymous';
+                }
                 
                 await new Promise((resolve, reject) => {
                     img.onload = () => {
@@ -1261,7 +1347,7 @@ class AITextEditor {
         }
         
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s debug informacemi...';
+        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s OpenAI debug...';
 
         try {
             console.log('🎮 DEBUG: Sending request to /api/instagram-image');
@@ -1301,7 +1387,7 @@ class AITextEditor {
     }
 
     async showInstagramPreview(data) {
-        console.log('🎮 DEBUG: Showing Instagram preview with data:', data);
+        console.log('🎮 DEBUG: Showing Instagram preview with OpenAI data:', data);
         
         this.currentInstagramPost = {
             id: null,
@@ -1329,7 +1415,7 @@ class AITextEditor {
         this.addDebugImageInfo();
         
         await this.updateInstagramPreview();
-        this.showNotification('Instagram carousel vygenerován s debug informacemi!');
+        this.showNotification('Instagram carousel vygenerován s OpenAI debug funkcemi!');
     }
 
     async processAIAction(action, customPrompt = '') {
@@ -1516,29 +1602,13 @@ document.addEventListener('DOMContentLoaded', () => {
     new AITextEditor();
 });
 
-// Debug funkce
-window.debugImageInfo = function() {
+// Debug funkce pro OpenAI obrázky
+window.debugOpenAIImage = function() {
     console.log('🧪 DEBUG: Current Instagram post:', globalEditor?.currentInstagramPost);
     if (globalEditor?.currentInstagramPost?.backgroundImageUrl) {
-        console.log('🧪 DEBUG: Opening image in new tab...');
+        console.log('🧪 DEBUG: Opening OpenAI image in new tab...');
         window.open(globalEditor.currentInstagramPost.backgroundImageUrl, '_blank');
     } else {
-        console.log('❌ DEBUG: No image URL found');
-    }
-};
-
-window.forceTestImage = function() {
-    console.log('🧪 DEBUG: Force testing with test image...');
-    
-    if (globalEditor) {
-        globalEditor.currentInstagramPost = {
-            title: 'Test',
-            text: 'Test text',
-            backgroundImageUrl: 'https://picsum.photos/1080/1350?random=' + Date.now()
-        };
-        
-        globalEditor.addDebugImageInfo();
-        globalEditor.updateInstagramPreview();
-        console.log('✅ Force test triggered');
+        console.log('❌ DEBUG: No OpenAI image URL found');
     }
 };
