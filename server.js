@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// Instagram obrázek endpoint
+// Instagram obrázek endpoint s AI generovaným pozadím
 app.post('/api/instagram-image', async (req, res) => {
   try {
     const { selectedText } = req.body;
@@ -66,20 +66,66 @@ app.post('/api/instagram-image', async (req, res) => {
 
     console.log('Generating Instagram post for text:', selectedText.substring(0, 50));
 
-    // Nejprve vygeneruj text pro Instagram
+    // 1. Vygeneruj optimalizovaný text pro Instagram
     const textResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
       model: 'llama-3.1-sonar-small-128k-online',
       messages: [
         { 
           role: 'system', 
-          content: 'Jsi expert na Instagram marketing. Vytvoř poutavý text pro Instagram post v češtině. Text by měl být krátký, výstižný a vhodný pro umístění na obrázek.' 
+          content: 'Jsi expert na Instagram marketing. Vytvoř poutavý, krátký a výstižný text pro Instagram post v češtině. Text musí být jasný, bez speciálních značek jako ### nebo [], a vhodný pro umístění na obrázek.' 
         },
         { 
           role: 'user', 
-          content: `Přepis následující text do formátu vhodného pro Instagram post (max 150 znaků, bez hashtagů): "${selectedText}"` 
+          content: `Přepis následující text do formátu vhodného pro Instagram post (max 120 znaků, bez hashtagů, bez speciálních značek): "${selectedText}"` 
         }
       ],
       temperature: 0.7,
+      max_tokens: 150
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000
+    });
+
+    // 2. Vygeneruj popis pro AI obrázek
+    const imageDescriptionResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
+      model: 'llama-3.1-sonar-small-128k-online',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'Jsi expert na vytváření popisů pro AI generované obrázky. Vytvoř krátký, výstižný popis v angličtině pro moderní, minimalistický obrázek vhodný jako pozadí pro Instagram post.' 
+        },
+        { 
+          role: 'user', 
+          content: `Na základě tohoto textu vytvoř popis pro AI generovaný obrázek (v angličtině, max 50 slov, moderní styl): "${selectedText}"` 
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 100
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000
+    });
+
+    // 3. Vygeneruj relevantní hashtags
+    const hashtagsResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
+      model: 'llama-3.1-sonar-small-128k-online',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'Jsi expert na Instagram marketing a trendy. Vytvoř relevantní hashtags pro Instagram post v češtině. Zaměř se na populární a trendové hashtags s vysokou návštěvností.' 
+        },
+        { 
+          role: 'user', 
+          content: `Na základě tohoto obsahu vytvoř 8-12 relevantních hashtagů pro Instagram (mix populárních a specifických): "${selectedText}"` 
+        }
+      ],
+      temperature: 0.6,
       max_tokens: 200
     }, {
       headers: {
@@ -89,13 +135,25 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    const instagramText = textResponse.data.choices[0].message.content.trim();
+    const instagramText = textResponse.data.choices[0].message.content.trim()
+      .replace(/^###\s*/, '')  // Odstraň ### na začátku
+      .replace(/\[.*?\]/g, '') // Odstraň [text v závorkách]
+      .trim();
+
+    const imageDescription = imageDescriptionResponse.data.choices[0].message.content.trim();
+    const hashtags = hashtagsResponse.data.choices[0].message.content.trim();
     
-    console.log('Generated Instagram text:', instagramText);
+    console.log('Generated Instagram content:', {
+      text: instagramText,
+      imageDesc: imageDescription,
+      hashtags: hashtags
+    });
 
     res.json({
       success: true,
       result: instagramText,
+      imageDescription: imageDescription,
+      hashtags: hashtags,
       action: 'instagram-image',
       timestamp: new Date().toISOString()
     });
@@ -161,7 +219,7 @@ app.post('/api/perplexity', async (req, res) => {
             error: 'Pro vytvoření Instagram postu musíte vybrat text'
           });
         }
-        systemPrompt = "Jsi expert na Instagram marketing. Vytvoř poutavý text pro Instagram post v češtině.";
+        systemPrompt = "Jsi expert na Instagram marketing. Vytvoř poutavý text pro Instagram post v češtině bez speciálních značek.";
         userPrompt = `Přepis následující text do formátu vhodného pro Instagram post s hashtegy: "${selectedText}"`;
         break;
       case 'expand':
