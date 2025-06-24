@@ -176,114 +176,44 @@ class AITextEditor {
     initializeEventListeners() {
         console.log('Initializing event listeners...');
         
-        // Context menu
+        // OPRAVA: Context menu - správné zacházení s contextmenu eventem
         this.editor.addEventListener('contextmenu', (e) => {
-            console.log('Context menu triggered');
+            e.preventDefault(); // Zabráníme výchozímu kontextovému menu
+            console.log('Context menu triggered on editor');
             this.showContextMenu(e);
         });
         
+        // Skrytí menu při kliknutí jinam
         document.addEventListener('click', (e) => {
             if (!this.contextMenu.contains(e.target)) {
                 this.hideContextMenu();
             }
         });
         
-        // Menu items
-        const menuItems = document.querySelectorAll('.menu-item');
-        console.log('Found menu items:', menuItems.length);
-        menuItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                console.log('Menu item clicked:', e.currentTarget.dataset.action);
-                this.handleMenuClick(e);
-            });
-        });
-
-        // Library sidebar filters
-        document.querySelectorAll('.section-item[data-filter]').forEach(item => {
-            item.addEventListener('click', (e) => {
-                this.handleFilterClick(e);
-            });
-        });
+        // OPRAVA: Menu items - čekáme až DOM bude načten
+        this.setupMenuItems();
+        
+        // OPRAVA: Library sidebar filters - správné navázání eventů
+        this.setupLibraryFilters();
 
         // New project button
-        document.getElementById('newProjectBtn')?.addEventListener('click', () => {
-            this.createNewProject();
-        });
+        const newProjectBtn = document.getElementById('newProjectBtn');
+        if (newProjectBtn) {
+            newProjectBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('New project clicked');
+                this.createNewProject();
+            });
+        }
 
         // Header buttons
-        const saveBtn = document.getElementById('saveBtn');
-        const newBtn = document.getElementById('newBtn');
-        const clearBtn = document.getElementById('clearBtn');
+        this.setupHeaderButtons();
         
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
-                console.log('Save button clicked');
-                this.showSaveModal();
-            });
-        }
-        
-        if (newBtn) {
-            newBtn.addEventListener('click', () => {
-                console.log('New button clicked');
-                this.newArticle();
-            });
-        }
-        
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => {
-                console.log('Clear button clicked');
-                this.clearEditor();
-            });
-        }
-
         // Modal buttons
-        const submitPrompt = document.getElementById('submitPrompt');
-        const cancelPrompt = document.getElementById('cancelPrompt');
-        const confirmSave = document.getElementById('confirmSave');
-        const cancelSave = document.getElementById('cancelSave');
-        
-        if (submitPrompt) {
-            submitPrompt.addEventListener('click', () => this.submitPrompt());
-        }
-        if (cancelPrompt) {
-            cancelPrompt.addEventListener('click', () => this.hideModal());
-        }
-        if (confirmSave) {
-            confirmSave.addEventListener('click', () => this.confirmSaveArticle());
-        }
-        if (cancelSave) {
-            cancelSave.addEventListener('click', () => this.hideSaveModal());
-        }
+        this.setupModalButtons();
 
         // Instagram sidebar
-        document.getElementById('closeInstagramSidebar')?.addEventListener('click', () => {
-            this.hideInstagramSidebar();
-        });
-
-        document.getElementById('instagramText')?.addEventListener('input', (e) => {
-            if (this.currentInstagramPost) {
-                this.currentInstagramPost.text = e.target.value;
-                this.updateInstagramPreview();
-            }
-        });
-
-        document.getElementById('instagramHashtags')?.addEventListener('input', (e) => {
-            if (this.currentInstagramPost) {
-                this.currentInstagramPost.hashtags = e.target.value;
-            }
-        });
-
-        document.getElementById('regenerateInstagramImage')?.addEventListener('click', () => {
-            this.regenerateInstagramImage();
-        });
-
-        document.getElementById('saveInstagramPost')?.addEventListener('click', () => {
-            this.saveInstagramPost();
-        });
-
-        document.getElementById('downloadInstagramSlides')?.addEventListener('click', () => {
-            this.downloadInstagramSlides();
-        });
+        this.setupInstagramSidebar();
 
         // Editor events
         this.editor.addEventListener('input', () => {
@@ -306,7 +236,165 @@ class AITextEditor {
         console.log('Event listeners initialized');
     }
 
+    setupMenuItems() {
+        // Počkáme na DOM a pak navážeme eventy
+        setTimeout(() => {
+            const menuItems = document.querySelectorAll('.menu-item');
+            console.log('Setting up menu items:', menuItems.length);
+            
+            menuItems.forEach((item, index) => {
+                console.log(`Setting up menu item ${index}:`, item.dataset.action);
+                
+                // Odstraníme staré event listenery
+                item.removeEventListener('click', this.handleMenuClick);
+                
+                // Přidáme nový event listener
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Menu item clicked:', e.currentTarget.dataset.action);
+                    this.handleMenuClick(e);
+                });
+            });
+        }, 100);
+    }
+
+    setupLibraryFilters() {
+        setTimeout(() => {
+            const filterItems = document.querySelectorAll('.section-item[data-filter]');
+            console.log('Setting up library filters:', filterItems.length);
+            
+            filterItems.forEach((item, index) => {
+                console.log(`Setting up filter ${index}:`, item.dataset.filter);
+                
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Filter clicked:', e.currentTarget.dataset.filter);
+                    this.handleFilterClick(e);
+                });
+            });
+        }, 100);
+    }
+
+    setupHeaderButtons() {
+        const saveBtn = document.getElementById('saveBtn');
+        const newBtn = document.getElementById('newBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        if (saveBtn) {
+            saveBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Save button clicked');
+                this.showSaveModal();
+            });
+        }
+        
+        if (newBtn) {
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('New button clicked');
+                this.newArticle();
+            });
+        }
+        
+        if (clearBtn) {
+            clearBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Clear button clicked');
+                this.clearEditor();
+            });
+        }
+    }
+
+    setupModalButtons() {
+        const submitPrompt = document.getElementById('submitPrompt');
+        const cancelPrompt = document.getElementById('cancelPrompt');
+        const confirmSave = document.getElementById('confirmSave');
+        const cancelSave = document.getElementById('cancelSave');
+        
+        if (submitPrompt) {
+            submitPrompt.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.submitPrompt();
+            });
+        }
+        if (cancelPrompt) {
+            cancelPrompt.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.hideModal();
+            });
+        }
+        if (confirmSave) {
+            confirmSave.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.confirmSaveArticle();
+            });
+        }
+        if (cancelSave) {
+            cancelSave.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.hideSaveModal();
+            });
+        }
+    }
+
+    setupInstagramSidebar() {
+        const closeBtn = document.getElementById('closeInstagramSidebar');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.hideInstagramSidebar();
+            });
+        }
+
+        const instagramText = document.getElementById('instagramText');
+        if (instagramText) {
+            instagramText.addEventListener('input', (e) => {
+                if (this.currentInstagramPost) {
+                    this.currentInstagramPost.text = e.target.value;
+                    this.updateInstagramPreview();
+                }
+            });
+        }
+
+        const instagramHashtags = document.getElementById('instagramHashtags');
+        if (instagramHashtags) {
+            instagramHashtags.addEventListener('input', (e) => {
+                if (this.currentInstagramPost) {
+                    this.currentInstagramPost.hashtags = e.target.value;
+                }
+            });
+        }
+
+        const regenerateBtn = document.getElementById('regenerateInstagramImage');
+        if (regenerateBtn) {
+            regenerateBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.regenerateInstagramImage();
+            });
+        }
+
+        const saveBtn = document.getElementById('saveInstagramPost');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.saveInstagramPost();
+            });
+        }
+
+        const downloadBtn = document.getElementById('downloadInstagramSlides');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.downloadInstagramSlides();
+            });
+        }
+    }
+
     handleFilterClick(e) {
+        console.log('Filter click handler called:', e.currentTarget.dataset.filter);
+        
         // Remove active from all filter items
         document.querySelectorAll('.section-item[data-filter]').forEach(item => {
             item.classList.remove('active');
@@ -320,22 +408,35 @@ class AITextEditor {
         
         // Reload articles list with filter
         this.loadArticlesList();
+        
+        // Show notification
+        const filterNames = {
+            'all': 'Všechny články',
+            'recent': 'Posledních 7 dní',
+            'trash': 'Koš'
+        };
+        
+        this.showNotification(`Filtr: ${filterNames[this.currentFilter]}`);
     }
 
     createNewProject() {
         const projectName = prompt('Zadejte název nového projektu:');
-        if (projectName) {
+        if (projectName && projectName.trim()) {
             this.showNotification(`Projekt "${projectName}" vytvořen`);
             // Here you could implement project creation logic
         }
     }
 
     showInstagramSidebar() {
-        this.instagramSidebar.classList.remove('hidden');
+        if (this.instagramSidebar) {
+            this.instagramSidebar.classList.remove('hidden');
+        }
     }
 
     hideInstagramSidebar() {
-        this.instagramSidebar.classList.add('hidden');
+        if (this.instagramSidebar) {
+            this.instagramSidebar.classList.add('hidden');
+        }
         this.currentInstagramPost = null;
     }
 
@@ -455,7 +556,7 @@ class AITextEditor {
         if (!newPrompt) return;
 
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Regeneruji obrázek...';
+        document.getElementById('loadingText').textContent = 'Regeneruji realistickou fotografii...';
 
         try {
             const response = await fetch('/api/generate-image', {
@@ -464,7 +565,7 @@ class AITextEditor {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    prompt: `${newPrompt}, realistic photography, high quality, professional photo, suitable for Instagram post`
+                    prompt: `${newPrompt}, realistic photography, high quality, professional photo, photorealistic, detailed, suitable for Instagram post, natural lighting`
                 })
             });
 
@@ -474,7 +575,7 @@ class AITextEditor {
                 this.currentInstagramPost.backgroundImageUrl = data.imageUrl;
                 this.currentInstagramPost.imageDescription = newPrompt;
                 await this.updateInstagramPreview();
-                this.showNotification('Obrázek regenerován');
+                this.showNotification('Realistická fotografie regenerována');
             } else {
                 this.showError('Chyba při regeneraci obrázku');
             }
@@ -510,7 +611,7 @@ class AITextEditor {
         }
 
         localStorage.setItem('instagramPosts', JSON.stringify(instagramPosts));
-        this.showNotification('Instagram post uložen');
+        this.showNotification('Instagram post uložen do historie');
     }
 
     getSavedInstagramPosts() {
@@ -549,7 +650,14 @@ class AITextEditor {
                 link2.href = canvas2.toDataURL('image/png');
                 link2.click();
                 
-                this.showNotification('Slides staženy');
+                // Copy hashtags to clipboard
+                if (this.currentInstagramPost.hashtags) {
+                    navigator.clipboard.writeText(this.currentInstagramPost.hashtags).then(() => {
+                        this.showNotification('Slides staženy a hashtags zkopírovány!');
+                    });
+                } else {
+                    this.showNotification('Slides staženy!');
+                }
             }, 500);
         });
     }
@@ -689,7 +797,7 @@ class AITextEditor {
         if (articles.length === 0) {
             this.articlesList.innerHTML = `
                 <div class="no-articles">
-                    <p>Zatím nemáte žádné uložené články.</p>
+                    <p>Zatím nemáte žádné články v kategorii "${this.getFilterName()}".</p>
                     <p>Napište něco a klikněte na "Uložit"</p>
                 </div>
             `;
@@ -711,6 +819,7 @@ class AITextEditor {
             </div>
         `).join('');
 
+        // Setup article click events
         document.querySelectorAll('.article-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('delete-article')) {
@@ -725,6 +834,15 @@ class AITextEditor {
                 this.deleteArticle(btn.dataset.id);
             });
         });
+    }
+
+    getFilterName() {
+        const filterNames = {
+            'all': 'Všechny články',
+            'recent': 'Posledních 7 dní',
+            'trash': 'Koš'
+        };
+        return filterNames[this.currentFilter] || 'Neznámá kategorie';
     }
 
     loadArticle(articleId) {
@@ -818,13 +936,16 @@ class AITextEditor {
 
     showContextMenu(e) {
         e.preventDefault();
-        console.log('Showing context menu');
+        console.log('Showing context menu at:', e.pageX, e.pageY);
         
         this.saveCursorPosition();
         
         const selection = window.getSelection();
         this.selectedText = selection.toString().trim();
         
+        console.log('Selected text:', this.selectedText);
+        
+        // Update menu items based on selection
         document.querySelectorAll('.menu-item').forEach(item => {
             const needsSelection = item.hasAttribute('data-needs-selection');
             if (needsSelection) {
@@ -832,9 +953,12 @@ class AITextEditor {
             }
         });
 
+        // Position and show menu
         this.contextMenu.style.left = e.pageX + 'px';
         this.contextMenu.style.top = e.pageY + 'px';
         this.contextMenu.classList.remove('hidden');
+        
+        console.log('Context menu should be visible now');
     }
 
     hideContextMenu() {
@@ -843,9 +967,15 @@ class AITextEditor {
 
     handleMenuClick(e) {
         e.stopPropagation();
+        e.preventDefault();
         
         const action = e.currentTarget.dataset.action;
-        if (e.currentTarget.classList.contains('disabled')) return;
+        console.log('Handling menu action:', action);
+        
+        if (e.currentTarget.classList.contains('disabled')) {
+            console.log('Menu item is disabled');
+            return;
+        }
 
         this.hideContextMenu();
 
@@ -879,8 +1009,13 @@ class AITextEditor {
     async processInstagramImage() {
         console.log('Processing Instagram carousel for text:', this.selectedText);
         
+        if (!this.selectedText) {
+            this.showError('Musíte vybrat text pro vytvoření Instagram carousel');
+            return;
+        }
+        
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel...';
+        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s realistickou fotografií...';
 
         try {
             const response = await fetch('/api/instagram-image', {
@@ -936,7 +1071,7 @@ class AITextEditor {
         // Update preview
         await this.updateInstagramPreview();
 
-        this.showNotification('Instagram carousel vygenerován! Můžete ho upravit a uložit.');
+        this.showNotification('Instagram carousel vygenerován! Můžete ho upravit v pravém panelu.');
     }
 
     async processAIAction(action, customPrompt = '') {
@@ -969,3 +1104,160 @@ class AITextEditor {
             } else {
                 this.showError(data.error || 'Prázdná odpověď z API');
             }
+        } catch (error) {
+            console.error('Request failed:', error);
+            this.showError('Chyba sítě: ' + error.message);
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    insertAIResult(result, action) {
+        console.log('Inserting AI result:', { result: result.substring(0, 100), action });
+        
+        this.editor.focus();
+        
+        const selection = window.getSelection();
+        
+        try {
+            if (action === 'generate' || action === 'custom') {
+                if (this.lastCursorPosition) {
+                    selection.removeAllRanges();
+                    selection.addRange(this.lastCursorPosition);
+                }
+                
+                const range = selection.getRangeAt(0);
+                const textNode = document.createTextNode(result);
+                range.insertNode(textNode);
+                
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+            } else if (this.selectedText && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                
+                if (range.collapsed && this.selectedText) {
+                    const editorText = this.editor.textContent;
+                    const textIndex = editorText.indexOf(this.selectedText);
+                    
+                    if (textIndex !== -1) {
+                        const textNode = this.findTextNode(this.editor, textIndex);
+                        if (textNode) {
+                            range.setStart(textNode.node, textNode.offset);
+                            range.setEnd(textNode.node, textNode.offset + this.selectedText.length);
+                        }
+                    }
+                }
+                
+                range.deleteContents();
+                const textNode = document.createTextNode(result);
+                range.insertNode(textNode);
+                
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else {
+                this.editor.appendChild(document.createTextNode('\n' + result));
+            }
+            
+        } catch (error) {
+            console.error('Error inserting text:', error);
+            this.editor.appendChild(document.createTextNode('\n' + result));
+        }
+        
+        this.selectedText = '';
+        this.autoSave();
+        this.updateWordCount();
+        
+        console.log('Text successfully inserted');
+    }
+
+    findTextNode(element, targetIndex) {
+        let currentIndex = 0;
+        
+        function traverse(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const nodeLength = node.textContent.length;
+                if (currentIndex + nodeLength > targetIndex) {
+                    return {
+                        node: node,
+                        offset: targetIndex - currentIndex
+                    };
+                }
+                currentIndex += nodeLength;
+            } else {
+                for (let child of node.childNodes) {
+                    const result = traverse(child);
+                    if (result) return result;
+                }
+            }
+            return null;
+        }
+        
+        return traverse(element);
+    }
+
+    trackSelection() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
+            this.selectionRange = selection.getRangeAt(0).cloneRange();
+        }
+    }
+
+    showLoading() {
+        this.loadingOverlay.classList.remove('hidden');
+    }
+
+    hideLoading() {
+        this.loadingOverlay.classList.add('hidden');
+    }
+
+    showError(message) {
+        console.error('Error:', message);
+        alert('Chyba: ' + message);
+    }
+
+    autoSave() {
+        localStorage.setItem('currentWork', this.editor.innerHTML);
+    }
+
+    clearEditor() {
+        if (confirm('Opravdu chcete vymazat celý obsah?')) {
+            this.newArticle();
+        }
+    }
+
+    showNotification(message) {
+        const notification = document.createElement('div');
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            z-index: 4000;
+            font-weight: 500;
+            font-size: 13px;
+            box-shadow: var(--shadow);
+        `;
+        
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+    }
+}
+
+// OPRAVA: Čekáme na kompletní načtení DOM
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing app...');
+    
+    // Malé zpoždění pro jistotu, že jsou všechny elementy připraveny
+    setTimeout(() => {
+        new AITextEditor();
+    }, 100);
+});
