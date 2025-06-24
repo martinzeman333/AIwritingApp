@@ -155,6 +155,7 @@ class AITextEditor {
         this.currentFilter = 'all';
         
         this.initializeEventListeners();
+        this.setupFormattingToolbar();
         this.loadArticlesList();
         this.updateWordCount();
     }
@@ -173,27 +174,243 @@ class AITextEditor {
         this.wordCountElement.textContent = `${words} Words`;
     }
 
+    setupFormattingToolbar() {
+        console.log('Setting up formatting toolbar...');
+        
+        // Font family
+        const fontFamily = document.getElementById('fontFamily');
+        if (fontFamily) {
+            fontFamily.addEventListener('change', (e) => {
+                document.execCommand('fontName', false, e.target.value);
+                this.editor.focus();
+            });
+        }
+
+        // Font size
+        const fontSize = document.getElementById('fontSize');
+        if (fontSize) {
+            fontSize.addEventListener('change', (e) => {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    if (!range.collapsed) {
+                        const span = document.createElement('span');
+                        span.style.fontSize = e.target.value;
+                        try {
+                            range.surroundContents(span);
+                        } catch (ex) {
+                            span.appendChild(range.extractContents());
+                            range.insertNode(span);
+                        }
+                    }
+                }
+                this.editor.focus();
+            });
+        }
+
+        // Bold
+        const boldBtn = document.getElementById('boldBtn');
+        if (boldBtn) {
+            boldBtn.addEventListener('click', () => {
+                document.execCommand('bold', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Italic
+        const italicBtn = document.getElementById('italicBtn');
+        if (italicBtn) {
+            italicBtn.addEventListener('click', () => {
+                document.execCommand('italic', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Underline
+        const underlineBtn = document.getElementById('underlineBtn');
+        if (underlineBtn) {
+            underlineBtn.addEventListener('click', () => {
+                document.execCommand('underline', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Align Left
+        const alignLeftBtn = document.getElementById('alignLeftBtn');
+        if (alignLeftBtn) {
+            alignLeftBtn.addEventListener('click', () => {
+                document.execCommand('justifyLeft', false, null);
+                this.updateAlignmentState();
+                this.editor.focus();
+            });
+        }
+
+        // Align Center
+        const alignCenterBtn = document.getElementById('alignCenterBtn');
+        if (alignCenterBtn) {
+            alignCenterBtn.addEventListener('click', () => {
+                document.execCommand('justifyCenter', false, null);
+                this.updateAlignmentState();
+                this.editor.focus();
+            });
+        }
+
+        // Align Right
+        const alignRightBtn = document.getElementById('alignRightBtn');
+        if (alignRightBtn) {
+            alignRightBtn.addEventListener('click', () => {
+                document.execCommand('justifyRight', false, null);
+                this.updateAlignmentState();
+                this.editor.focus();
+            });
+        }
+
+        // Text Color
+        const textColor = document.getElementById('textColor');
+        if (textColor) {
+            textColor.addEventListener('change', (e) => {
+                document.execCommand('foreColor', false, e.target.value);
+                this.editor.focus();
+            });
+        }
+
+        // Background Color
+        const bgColor = document.getElementById('bgColor');
+        if (bgColor) {
+            bgColor.addEventListener('change', (e) => {
+                document.execCommand('backColor', false, e.target.value);
+                this.editor.focus();
+            });
+        }
+
+        // Bullet List
+        const bulletListBtn = document.getElementById('bulletListBtn');
+        if (bulletListBtn) {
+            bulletListBtn.addEventListener('click', () => {
+                document.execCommand('insertUnorderedList', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Numbered List
+        const numberedListBtn = document.getElementById('numberedListBtn');
+        if (numberedListBtn) {
+            numberedListBtn.addEventListener('click', () => {
+                document.execCommand('insertOrderedList', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Clear Format
+        const clearFormatBtn = document.getElementById('clearFormatBtn');
+        if (clearFormatBtn) {
+            clearFormatBtn.addEventListener('click', () => {
+                document.execCommand('removeFormat', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Update toolbar state on selection change
+        this.editor.addEventListener('mouseup', () => this.updateToolbarState());
+        this.editor.addEventListener('keyup', () => this.updateToolbarState());
+
+        // Keyboard shortcuts
+        this.editor.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'b':
+                        e.preventDefault();
+                        document.execCommand('bold', false, null);
+                        this.updateToolbarState();
+                        break;
+                    case 'i':
+                        e.preventDefault();
+                        document.execCommand('italic', false, null);
+                        this.updateToolbarState();
+                        break;
+                    case 'u':
+                        e.preventDefault();
+                        document.execCommand('underline', false, null);
+                        this.updateToolbarState();
+                        break;
+                }
+            }
+        });
+
+        console.log('Formatting toolbar setup complete');
+    }
+
+    updateToolbarState() {
+        // Update button states based on current selection
+        const boldBtn = document.getElementById('boldBtn');
+        const italicBtn = document.getElementById('italicBtn');
+        const underlineBtn = document.getElementById('underlineBtn');
+        const bulletListBtn = document.getElementById('bulletListBtn');
+        const numberedListBtn = document.getElementById('numberedListBtn');
+
+        if (boldBtn) {
+            boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+        }
+        if (italicBtn) {
+            italicBtn.classList.toggle('active', document.queryCommandState('italic'));
+        }
+        if (underlineBtn) {
+            underlineBtn.classList.toggle('active', document.queryCommandState('underline'));
+        }
+        if (bulletListBtn) {
+            bulletListBtn.classList.toggle('active', document.queryCommandState('insertUnorderedList'));
+        }
+        if (numberedListBtn) {
+            numberedListBtn.classList.toggle('active', document.queryCommandState('insertOrderedList'));
+        }
+
+        this.updateAlignmentState();
+    }
+
+    updateAlignmentState() {
+        const alignLeftBtn = document.getElementById('alignLeftBtn');
+        const alignCenterBtn = document.getElementById('alignCenterBtn');
+        const alignRightBtn = document.getElementById('alignRightBtn');
+
+        if (alignLeftBtn) alignLeftBtn.classList.remove('active');
+        if (alignCenterBtn) alignCenterBtn.classList.remove('active');
+        if (alignRightBtn) alignRightBtn.classList.remove('active');
+
+        if (document.queryCommandState('justifyLeft') && alignLeftBtn) {
+            alignLeftBtn.classList.add('active');
+        } else if (document.queryCommandState('justifyCenter') && alignCenterBtn) {
+            alignCenterBtn.classList.add('active');
+        } else if (document.queryCommandState('justifyRight') && alignRightBtn) {
+            alignRightBtn.classList.add('active');
+        }
+    }
+
     initializeEventListeners() {
         console.log('Initializing event listeners...');
         
-        // OPRAVA: Context menu - správné zacházení s contextmenu eventem
+        // Context menu
         this.editor.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); // Zabráníme výchozímu kontextovému menu
-            console.log('Context menu triggered on editor');
+            e.preventDefault();
+            console.log('Context menu triggered');
             this.showContextMenu(e);
         });
         
-        // Skrytí menu při kliknutí jinam
         document.addEventListener('click', (e) => {
             if (!this.contextMenu.contains(e.target)) {
                 this.hideContextMenu();
             }
         });
         
-        // OPRAVA: Menu items - čekáme až DOM bude načten
+        // Menu items
         this.setupMenuItems();
         
-        // OPRAVA: Library sidebar filters - správné navázání eventů
+        // Library sidebar filters
         this.setupLibraryFilters();
 
         // New project button
@@ -237,7 +454,6 @@ class AITextEditor {
     }
 
     setupMenuItems() {
-        // Počkáme na DOM a pak navážeme eventy
         setTimeout(() => {
             const menuItems = document.querySelectorAll('.menu-item');
             console.log('Setting up menu items:', menuItems.length);
@@ -245,10 +461,8 @@ class AITextEditor {
             menuItems.forEach((item, index) => {
                 console.log(`Setting up menu item ${index}:`, item.dataset.action);
                 
-                // Odstraníme staré event listenery
                 item.removeEventListener('click', this.handleMenuClick);
                 
-                // Přidáme nový event listener
                 item.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -395,21 +609,14 @@ class AITextEditor {
     handleFilterClick(e) {
         console.log('Filter click handler called:', e.currentTarget.dataset.filter);
         
-        // Remove active from all filter items
         document.querySelectorAll('.section-item[data-filter]').forEach(item => {
             item.classList.remove('active');
         });
         
-        // Add active to clicked item
         e.currentTarget.classList.add('active');
-        
-        // Update current filter
         this.currentFilter = e.currentTarget.dataset.filter;
-        
-        // Reload articles list with filter
         this.loadArticlesList();
         
-        // Show notification
         const filterNames = {
             'all': 'Všechny články',
             'recent': 'Posledních 7 dní',
@@ -423,7 +630,6 @@ class AITextEditor {
         const projectName = prompt('Zadejte název nového projektu:');
         if (projectName && projectName.trim()) {
             this.showNotification(`Projekt "${projectName}" vytvořen`);
-            // Here you could implement project creation logic
         }
     }
 
@@ -451,10 +657,7 @@ class AITextEditor {
         const ctx1 = canvas1.getContext('2d');
         const ctx2 = canvas2.getContext('2d');
 
-        // Update slide 1
         await this.createPreviewSlide1(ctx1);
-        
-        // Update slide 2
         this.createPreviewSlide2(ctx2);
     }
 
@@ -481,11 +684,9 @@ class AITextEditor {
                 this.imageGenerator.createGradientBackground(ctx);
             }
             
-            // Dark overlay
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             
-            // Add title (scaled down for preview)
             ctx.font = 'bold 22px Arial, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -523,7 +724,6 @@ class AITextEditor {
         
         this.imageGenerator.createAbstractBackground(ctx);
         
-        // Add text (scaled down for preview)
         ctx.font = '13px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -575,7 +775,7 @@ class AITextEditor {
                 this.currentInstagramPost.backgroundImageUrl = data.imageUrl;
                 this.currentInstagramPost.imageDescription = newPrompt;
                 await this.updateInstagramPreview();
-                this.showNotification('Realistická fotografie regenerována');
+                this.showNotification(`Realistická fotografie regenerována (${data.generationMethod})`);
             } else {
                 this.showError('Chyba při regeneraci obrázku');
             }
@@ -589,22 +789,18 @@ class AITextEditor {
     saveInstagramPost() {
         if (!this.currentInstagramPost) return;
 
-        // Update current post with form values
         this.currentInstagramPost.text = document.getElementById('instagramText').value;
         this.currentInstagramPost.hashtags = document.getElementById('instagramHashtags').value;
         this.currentInstagramPost.imageDescription = document.getElementById('instagramImagePrompt').value;
 
-        // Save to localStorage
         const instagramPosts = this.getSavedInstagramPosts();
         
         if (this.currentInstagramPost.id) {
-            // Update existing
             const index = instagramPosts.findIndex(p => p.id === this.currentInstagramPost.id);
             if (index !== -1) {
                 instagramPosts[index] = this.currentInstagramPost;
             }
         } else {
-            // Create new
             this.currentInstagramPost.id = this.generateUUID();
             this.currentInstagramPost.timestamp = new Date().toISOString();
             instagramPosts.unshift(this.currentInstagramPost);
@@ -622,7 +818,6 @@ class AITextEditor {
     downloadInstagramSlides() {
         if (!this.currentInstagramPost) return;
 
-        // Create full-size canvases for download
         const canvas1 = document.createElement('canvas');
         const canvas2 = document.createElement('canvas');
         
@@ -634,11 +829,9 @@ class AITextEditor {
         const ctx1 = canvas1.getContext('2d');
         const ctx2 = canvas2.getContext('2d');
         
-        // Generate full-size slides
         this.createFullSizeSlide1(ctx1).then(() => {
             this.createFullSizeSlide2(ctx2);
             
-            // Download slides
             const link1 = document.createElement('a');
             link1.download = 'instagram-slide-1.png';
             link1.href = canvas1.toDataURL('image/png');
@@ -650,7 +843,6 @@ class AITextEditor {
                 link2.href = canvas2.toDataURL('image/png');
                 link2.click();
                 
-                // Copy hashtags to clipboard
                 if (this.currentInstagramPost.hashtags) {
                     navigator.clipboard.writeText(this.currentInstagramPost.hashtags).then(() => {
                         this.showNotification('Slides staženy a hashtags zkopírovány!');
@@ -777,7 +969,6 @@ class AITextEditor {
     loadArticlesList() {
         let articles = this.getSavedArticles();
         
-        // Apply filter
         const now = new Date();
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         
@@ -798,466 +989,3 @@ class AITextEditor {
             this.articlesList.innerHTML = `
                 <div class="no-articles">
                     <p>Zatím nemáte žádné články v kategorii "${this.getFilterName()}".</p>
-                    <p>Napište něco a klikněte na "Uložit"</p>
-                </div>
-            `;
-            return;
-        }
-
-        this.articlesList.innerHTML = articles.map(article => `
-            <div class="article-item ${article.id === this.currentArticleId ? 'active' : ''}" data-id="${article.id}">
-                <div class="article-header">
-                    <h4 class="article-title">${this.escapeHtml(article.title)}</h4>
-                    <div class="article-actions">
-                        <button class="delete-article" data-id="${article.id}" title="${article.isTrash ? 'Smazat natrvalo' : 'Přesunout do koše'}">×</button>
-                    </div>
-                </div>
-                <p class="article-preview">${this.escapeHtml(article.preview)}</p>
-                <div class="article-meta">
-                    <span class="article-date">${this.formatDate(article.timestamp)}</span>
-                </div>
-            </div>
-        `).join('');
-
-        // Setup article click events
-        document.querySelectorAll('.article-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('delete-article')) {
-                    this.loadArticle(item.dataset.id);
-                }
-            });
-        });
-
-        document.querySelectorAll('.delete-article').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.deleteArticle(btn.dataset.id);
-            });
-        });
-    }
-
-    getFilterName() {
-        const filterNames = {
-            'all': 'Všechny články',
-            'recent': 'Posledních 7 dní',
-            'trash': 'Koš'
-        };
-        return filterNames[this.currentFilter] || 'Neznámá kategorie';
-    }
-
-    loadArticle(articleId) {
-        const articles = this.getSavedArticles();
-        const article = articles.find(a => a.id === articleId);
-        
-        if (article) {
-            this.editor.innerHTML = article.content;
-            this.currentArticleId = articleId;
-            this.loadArticlesList();
-            this.updateWordCount();
-            this.showNotification(`Načten článek: ${article.title}`);
-        }
-    }
-
-    deleteArticle(articleId) {
-        const articles = this.getSavedArticles();
-        const article = articles.find(a => a.id === articleId);
-        
-        if (!article) return;
-
-        if (this.currentFilter === 'trash') {
-            // Permanent delete
-            if (confirm(`Opravdu chcete natrvalo smazat článek "${article.title}"?`)) {
-                const updatedArticles = articles.filter(a => a.id !== articleId);
-                localStorage.setItem('savedArticles', JSON.stringify(updatedArticles));
-                
-                if (this.currentArticleId === articleId) {
-                    this.newArticle();
-                }
-                
-                this.loadArticlesList();
-                this.showNotification(`Článek "${article.title}" byl natrvalo smazán`);
-            }
-        } else {
-            // Move to trash
-            if (confirm(`Přesunout článek "${article.title}" do koše?`)) {
-                article.isTrash = true;
-                localStorage.setItem('savedArticles', JSON.stringify(articles));
-                
-                if (this.currentArticleId === articleId) {
-                    this.newArticle();
-                }
-                
-                this.loadArticlesList();
-                this.showNotification(`Článek "${article.title}" byl přesunut do koše`);
-            }
-        }
-    }
-
-    newArticle() {
-        this.editor.innerHTML = '';
-        this.currentArticleId = null;
-        this.loadArticlesList();
-        this.updateWordCount();
-        this.editor.focus();
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    formatDate(timestamp) {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return 'právě teď';
-        if (diffMins < 60) return `před ${diffMins} min`;
-        if (diffHours < 24) return `před ${diffHours} h`;
-        if (diffDays < 7) return `před ${diffDays} dny`;
-        
-        return date.toLocaleDateString('cs-CZ', {
-            day: 'numeric',
-            month: 'short',
-            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-        });
-    }
-
-    saveCursorPosition() {
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
-            this.lastCursorPosition = selection.getRangeAt(0).cloneRange();
-        }
-    }
-
-    showContextMenu(e) {
-        e.preventDefault();
-        console.log('Showing context menu at:', e.pageX, e.pageY);
-        
-        this.saveCursorPosition();
-        
-        const selection = window.getSelection();
-        this.selectedText = selection.toString().trim();
-        
-        console.log('Selected text:', this.selectedText);
-        
-        // Update menu items based on selection
-        document.querySelectorAll('.menu-item').forEach(item => {
-            const needsSelection = item.hasAttribute('data-needs-selection');
-            if (needsSelection) {
-                item.classList.toggle('disabled', !this.selectedText);
-            }
-        });
-
-        // Position and show menu
-        this.contextMenu.style.left = e.pageX + 'px';
-        this.contextMenu.style.top = e.pageY + 'px';
-        this.contextMenu.classList.remove('hidden');
-        
-        console.log('Context menu should be visible now');
-    }
-
-    hideContextMenu() {
-        this.contextMenu.classList.add('hidden');
-    }
-
-    handleMenuClick(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        
-        const action = e.currentTarget.dataset.action;
-        console.log('Handling menu action:', action);
-        
-        if (e.currentTarget.classList.contains('disabled')) {
-            console.log('Menu item is disabled');
-            return;
-        }
-
-        this.hideContextMenu();
-
-        if (action === 'generate') {
-            this.showPromptModal();
-        } else if (action === 'instagram') {
-            this.processInstagramImage();
-        } else {
-            this.processAIAction(action);
-        }
-    }
-
-    showPromptModal() {
-        this.promptModal.classList.remove('hidden');
-        this.promptInput.focus();
-    }
-
-    hideModal() {
-        this.promptModal.classList.add('hidden');
-        this.promptInput.value = '';
-    }
-
-    async submitPrompt() {
-        const prompt = this.promptInput.value.trim();
-        if (!prompt) return;
-
-        this.hideModal();
-        await this.processAIAction('custom', prompt);
-    }
-
-    async processInstagramImage() {
-        console.log('Processing Instagram carousel for text:', this.selectedText);
-        
-        if (!this.selectedText) {
-            this.showError('Musíte vybrat text pro vytvoření Instagram carousel');
-            return;
-        }
-        
-        this.showLoading();
-        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s realistickou fotografií...';
-
-        try {
-            const response = await fetch('/api/instagram-image', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    selectedText: this.selectedText
-                })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.result) {
-                await this.showInstagramPreview(data);
-            } else {
-                this.showError(data.error || 'Chyba při generování Instagram carousel');
-            }
-        } catch (error) {
-            console.error('Instagram carousel generation failed:', error);
-            this.showError('Chyba při generování carousel: ' + error.message);
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    async showInstagramPreview(data) {
-        // Create Instagram post object
-        this.currentInstagramPost = {
-            id: null,
-            title: data.title,
-            text: data.result,
-            hashtags: data.hashtags,
-            imageDescription: data.imageDescription,
-            backgroundImageUrl: data.backgroundImageUrl,
-            timestamp: null
-        };
-
-        // Fill form fields
-        document.getElementById('instagramText').value = data.result;
-        document.getElementById('instagramHashtags').value = data.hashtags;
-        document.getElementById('instagramImagePrompt').value = data.imageDescription;
-
-        // Show sidebar
-        this.showInstagramSidebar();
-
-        // Update preview
-        await this.updateInstagramPreview();
-
-        this.showNotification('Instagram carousel vygenerován! Můžete ho upravit v pravém panelu.');
-    }
-
-    async processAIAction(action, customPrompt = '') {
-        console.log('Processing AI action:', { action, customPrompt, selectedText: this.selectedText });
-        
-        this.showLoading();
-
-        try {
-            const response = await fetch('/api/perplexity', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: action,
-                    prompt: customPrompt,
-                    selectedText: this.selectedText
-                })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.result) {
-                this.insertAIResult(data.result, action);
-            } else {
-                this.showError(data.error || 'Prázdná odpověď z API');
-            }
-        } catch (error) {
-            console.error('Request failed:', error);
-            this.showError('Chyba sítě: ' + error.message);
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    insertAIResult(result, action) {
-        console.log('Inserting AI result:', { result: result.substring(0, 100), action });
-        
-        this.editor.focus();
-        
-        const selection = window.getSelection();
-        
-        try {
-            if (action === 'generate' || action === 'custom') {
-                if (this.lastCursorPosition) {
-                    selection.removeAllRanges();
-                    selection.addRange(this.lastCursorPosition);
-                }
-                
-                const range = selection.getRangeAt(0);
-                const textNode = document.createTextNode(result);
-                range.insertNode(textNode);
-                
-                range.setStartAfter(textNode);
-                range.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                
-            } else if (this.selectedText && selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                
-                if (range.collapsed && this.selectedText) {
-                    const editorText = this.editor.textContent;
-                    const textIndex = editorText.indexOf(this.selectedText);
-                    
-                    if (textIndex !== -1) {
-                        const textNode = this.findTextNode(this.editor, textIndex);
-                        if (textNode) {
-                            range.setStart(textNode.node, textNode.offset);
-                            range.setEnd(textNode.node, textNode.offset + this.selectedText.length);
-                        }
-                    }
-                }
-                
-                range.deleteContents();
-                const textNode = document.createTextNode(result);
-                range.insertNode(textNode);
-                
-                range.setStartAfter(textNode);
-                range.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(range);
-            } else {
-                this.editor.appendChild(document.createTextNode('\n' + result));
-            }
-            
-        } catch (error) {
-            console.error('Error inserting text:', error);
-            this.editor.appendChild(document.createTextNode('\n' + result));
-        }
-        
-        this.selectedText = '';
-        this.autoSave();
-        this.updateWordCount();
-        
-        console.log('Text successfully inserted');
-    }
-
-    findTextNode(element, targetIndex) {
-        let currentIndex = 0;
-        
-        function traverse(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const nodeLength = node.textContent.length;
-                if (currentIndex + nodeLength > targetIndex) {
-                    return {
-                        node: node,
-                        offset: targetIndex - currentIndex
-                    };
-                }
-                currentIndex += nodeLength;
-            } else {
-                for (let child of node.childNodes) {
-                    const result = traverse(child);
-                    if (result) return result;
-                }
-            }
-            return null;
-        }
-        
-        return traverse(element);
-    }
-
-    trackSelection() {
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
-            this.selectionRange = selection.getRangeAt(0).cloneRange();
-        }
-    }
-
-    showLoading() {
-        this.loadingOverlay.classList.remove('hidden');
-    }
-
-    hideLoading() {
-        this.loadingOverlay.classList.add('hidden');
-    }
-
-    showError(message) {
-        console.error('Error:', message);
-        alert('Chyba: ' + message);
-    }
-
-    autoSave() {
-        localStorage.setItem('currentWork', this.editor.innerHTML);
-    }
-
-    clearEditor() {
-        if (confirm('Opravdu chcete vymazat celý obsah?')) {
-            this.newArticle();
-        }
-    }
-
-    showNotification(message) {
-        const notification = document.createElement('div');
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--accent);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            z-index: 4000;
-            font-weight: 500;
-            font-size: 13px;
-            box-shadow: var(--shadow);
-        `;
-        
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
-    }
-}
-
-// OPRAVA: Čekáme na kompletní načtení DOM
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing app...');
-    
-    // Malé zpoždění pro jistotu, že jsou všechny elementy připraveny
-    setTimeout(() => {
-        new AITextEditor();
-    }, 100);
-});
