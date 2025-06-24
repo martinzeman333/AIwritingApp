@@ -578,3 +578,83 @@ class AITextEditor {
     }
 
     findTextNode(element, targetIndex) {
+        let currentIndex = 0;
+        
+        function traverse(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const nodeLength = node.textContent.length;
+                if (currentIndex + nodeLength > targetIndex) {
+                    return {
+                        node: node,
+                        offset: targetIndex - currentIndex
+                    };
+                }
+                currentIndex += nodeLength;
+            } else {
+                for (let child of node.childNodes) {
+                    const result = traverse(child);
+                    if (result) return result;
+                }
+            }
+            return null;
+        }
+        
+        return traverse(element);
+    }
+
+    trackSelection() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
+            this.selectionRange = selection.getRangeAt(0).cloneRange();
+        }
+    }
+
+    showLoading() {
+        this.loadingOverlay.classList.remove('hidden');
+    }
+
+    hideLoading() {
+        this.loadingOverlay.classList.add('hidden');
+    }
+
+    showError(message) {
+        console.error('Error:', message);
+        alert('Chyba: ' + message);
+    }
+
+    autoSave() {
+        localStorage.setItem('currentWork', this.editor.innerHTML);
+    }
+
+    clearEditor() {
+        if (confirm('Opravdu chcete vymazat celý obsah?')) {
+            this.newArticle();
+        }
+    }
+
+    showNotification(message) {
+        const notification = document.createElement('div');
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4a90e2;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            z-index: 4000;
+            font-weight: 500;
+            font-size: 14px;
+        `;
+        
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+    }
+}
+
+// Inicializace aplikace
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing app...');
+    new AITextEditor();
+});
