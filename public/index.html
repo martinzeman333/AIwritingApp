@@ -9,32 +9,40 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>✨ AI Textový Editor</h1>
-            <div class="header-actions">
-                <button id="saveBtn" class="btn-secondary">💾 Uložit článek</button>
-                <button id="newBtn" class="btn-secondary">📄 Nový článek</button>
-                <button id="clearBtn" class="btn-secondary">🗑️ Vymazat</button>
-            </div>
-        </header>
-
-        <main>
-            <div id="editor" contenteditable="true" placeholder="Začni psát... Klikni pravým tlačítkem pro AI asistenta"></div>
-        </main>
-
-        <!-- Seznam uložených článků -->
-        <aside class="articles-sidebar">
+    <div class="app-layout">
+        <!-- Sidebar inspirovaný Ulysses -->
+        <aside class="sidebar">
             <div class="sidebar-header">
-                <h3>📚 Uložené články</h3>
+                <h2>Dokumenty</h2>
+                <div class="sidebar-actions">
+                    <button id="newBtn" class="btn-icon" title="Nový dokument">+</button>
+                </div>
             </div>
+            
             <div id="articlesList" class="articles-list">
                 <div class="no-articles">
                     <p>Zatím nemáte žádné uložené články.</p>
-                    <p>Napište něco a klikněte na "💾 Uložit článek"</p>
+                    <p>Napište něco a klikněte na "Uložit"</p>
                 </div>
             </div>
         </aside>
+
+        <!-- Main content area -->
+        <main class="main-content">
+            <div class="editor-header">
+                <div class="editor-title">
+                    <h1>AI Textový Editor</h1>
+                </div>
+                <div class="editor-actions">
+                    <button id="saveBtn" class="btn-primary">Uložit</button>
+                    <button id="clearBtn" class="btn-secondary">Vymazat</button>
+                </div>
+            </div>
+            
+            <div class="editor-container">
+                <div id="editor" contenteditable="true" placeholder="Začni psát... Klikni pravým tlačítkem pro AI asistenta"></div>
+            </div>
+        </main>
 
         <!-- Kontextové menu -->
         <div id="contextMenu" class="context-menu hidden">
@@ -68,7 +76,7 @@
         <!-- Modal pro vlastní prompt -->
         <div id="promptModal" class="modal hidden">
             <div class="modal-content">
-                <h3>✨ AI Asistent</h3>
+                <h3>AI Asistent</h3>
                 <textarea id="promptInput" placeholder="Zadej instrukce pro AI..."></textarea>
                 <div class="modal-actions">
                     <button id="cancelPrompt" class="btn-secondary">Zrušit</button>
@@ -80,65 +88,11 @@
         <!-- Modal pro uložení článku -->
         <div id="saveModal" class="modal hidden">
             <div class="modal-content">
-                <h3>💾 Uložit článek</h3>
-                <input type="text" id="articleTitle" placeholder="Zadejte název článku..." />
+                <h3>Uložit dokument</h3>
+                <input type="text" id="articleTitle" placeholder="Zadejte název dokumentu..." />
                 <div class="modal-actions">
                     <button id="cancelSave" class="btn-secondary">Zrušit</button>
                     <button id="confirmSave" class="btn-primary">Uložit</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Instagram Modal -->
-        <div id="instagramModal" class="modal hidden">
-            <div class="instagram-modal-content">
-                <div class="instagram-modal-header">
-                    <h3>📸 Instagram Post</h3>
-                    <button class="close-btn">&times;</button>
-                </div>
-                
-                <div class="instagram-content-wrapper">
-                    <!-- Slides Preview -->
-                    <div class="slides-preview">
-                        <div class="slide-container">
-                            <div class="slide active" id="slide1">
-                                <canvas id="imageCanvas" width="1080" height="1350"></canvas>
-                            </div>
-                            <div class="slide" id="slide2">
-                                <canvas id="textCanvas" width="1080" height="1350"></canvas>
-                            </div>
-                        </div>
-                        <div class="slide-indicators">
-                            <button class="indicator active" data-slide="1">1</button>
-                            <button class="indicator" data-slide="2">2</button>
-                        </div>
-                    </div>
-
-                    <!-- Content Editor -->
-                    <div class="content-editor">
-                        <div class="editor-section">
-                            <label>📝 Text příspěvku:</label>
-                            <textarea id="postText" placeholder="Upravte text příspěvku..."></textarea>
-                        </div>
-                        
-                        <div class="editor-section">
-                            <label>🏷️ Hashtags:</label>
-                            <textarea id="postHashtags" placeholder="#hashtag1 #hashtag2 #hashtag3"></textarea>
-                        </div>
-
-                        <div class="editor-section">
-                            <label>🎨 Popis pro AI obrázek:</label>
-                            <textarea id="imagePrompt" placeholder="Popište, jak má vypadat obrázek..."></textarea>
-                            <button id="regenerateImage" class="btn-secondary">🔄 Regenerovat obrázek</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="instagram-modal-actions">
-                    <button id="downloadSlides" class="btn-secondary">💾 Stáhnout slides</button>
-                    <button id="copyInstagramText" class="btn-secondary">📋 Kopírovat text</button>
-                    <button id="postToInstagram" class="btn-instagram">📸 Připravit pro Instagram</button>
-                    <button id="insertInstagramText" class="btn-primary">📝 Vložit do editoru</button>
                 </div>
             </div>
         </div>
