@@ -6,35 +6,59 @@
     <title>AI Textový Editor</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>✨ AI Textový Editor</h1>
-            <div class="header-actions">
-                <button id="saveBtn" class="btn-secondary">💾 Uložit článek</button>
-                <button id="newBtn" class="btn-secondary">📄 Nový článek</button>
-                <button id="clearBtn" class="btn-secondary">🗑️ Vymazat</button>
-            </div>
-        </header>
-
-        <main>
-            <div id="editor" contenteditable="true" placeholder="Začni psát... Klikni pravým tlačítkem pro AI asistenta"></div>
-        </main>
-
-        <!-- Seznam uložených článků -->
-        <aside class="articles-sidebar">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
             <div class="sidebar-header">
-                <h3>📚 Uložené články</h3>
-                <button id="clearAllBtn" class="btn-danger-small">🗑️ Vymazat vše</button>
+                <div class="logo">
+                    <div class="logo-icon">✨</div>
+                    <span class="logo-text">AI Editor</span>
+                </div>
             </div>
-            <div id="articlesList" class="articles-list">
-                <div class="no-articles">
-                    <p>Zatím nemáte žádné uložené články.</p>
-                    <p>Napište něco a klikněte na "💾 Uložit článek"</p>
+            
+            <nav class="sidebar-nav">
+                <button id="newBtn" class="nav-item active">
+                    <span class="nav-icon">📄</span>
+                    <span class="nav-text">Nový článek</span>
+                </button>
+                <button id="saveBtn" class="nav-item">
+                    <span class="nav-icon">💾</span>
+                    <span class="nav-text">Uložit článek</span>
+                </button>
+            </nav>
+
+            <div class="articles-section">
+                <div class="section-header">
+                    <h3>📚 Uložené články</h3>
+                </div>
+                <div id="articlesList" class="articles-list">
+                    <div class="no-articles">
+                        <p>Zatím nemáte žádné uložené články.</p>
+                        <p>Napište něco a klikněte na "💾 Uložit článek"</p>
+                    </div>
                 </div>
             </div>
         </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-content">
+                    <h1>wanted <span class="highlight">for nothing</span></h1>
+                    <p class="subtitle">tech & design consultancy</p>
+                </div>
+                <div class="header-actions">
+                    <button id="clearBtn" class="btn-ghost">🗑️ Vymazat</button>
+                </div>
+            </header>
+
+            <div class="editor-container">
+                <div id="editor" contenteditable="true" placeholder="Začni psát svůj příběh... Klikni pravým tlačítkem pro AI asistenta"></div>
+            </div>
+        </main>
 
         <!-- Kontextové menu -->
         <div id="contextMenu" class="context-menu hidden">
@@ -89,11 +113,65 @@
             </div>
         </div>
 
+        <!-- Instagram Modal -->
+        <div id="instagramModal" class="modal hidden">
+            <div class="instagram-modal-content">
+                <div class="instagram-modal-header">
+                    <h3>📸 Instagram Post</h3>
+                    <button class="close-btn">&times;</button>
+                </div>
+                
+                <div class="instagram-content-wrapper">
+                    <!-- Slides Preview -->
+                    <div class="slides-preview">
+                        <div class="slide-container">
+                            <div class="slide active" id="slide1">
+                                <canvas id="imageCanvas" width="1080" height="1350"></canvas>
+                            </div>
+                            <div class="slide" id="slide2">
+                                <canvas id="textCanvas" width="1080" height="1350"></canvas>
+                            </div>
+                        </div>
+                        <div class="slide-indicators">
+                            <button class="indicator active" data-slide="1">1</button>
+                            <button class="indicator" data-slide="2">2</button>
+                        </div>
+                    </div>
+
+                    <!-- Content Editor -->
+                    <div class="content-editor">
+                        <div class="editor-section">
+                            <label>📝 Text příspěvku:</label>
+                            <textarea id="postText" placeholder="Upravte text příspěvku..."></textarea>
+                        </div>
+                        
+                        <div class="editor-section">
+                            <label>🏷️ Hashtags:</label>
+                            <textarea id="postHashtags" placeholder="#hashtag1 #hashtag2 #hashtag3"></textarea>
+                        </div>
+
+                        <div class="editor-section">
+                            <label>🎨 Popis pro AI obrázek:</label>
+                            <textarea id="imagePrompt" placeholder="Popište, jak má vypadat obrázek..."></textarea>
+                            <button id="regenerateImage" class="btn-secondary">🔄 Regenerovat obrázek</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="instagram-modal-actions">
+                    <button id="downloadSlides" class="btn-secondary">💾 Stáhnout slides</button>
+                    <button id="copyInstagramText" class="btn-secondary">📋 Kopírovat text</button>
+                    <button id="postToInstagram" class="btn-instagram">📸 Odeslat na Instagram</button>
+                    <button id="insertInstagramText" class="btn-primary">📝 Vložit do editoru</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading overlay -->
         <div id="loadingOverlay" class="loading-overlay hidden">
             <div class="loading-spinner">
                 <div class="spinner"></div>
-                <p>AI pracuje na vašem textu...</p>
+                <p id="loadingText">AI pracuje na vašem textu...</p>
             </div>
         </div>
     </div>
