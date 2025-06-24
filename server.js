@@ -1,329 +1,345 @@
-class AITextEditor {
-    constructor() {
-        this.editor = document.getElementById('editor');
-        this.contextMenu = document.getElementById('contextMenu');
-        this.promptModal = document.getElementById('promptModal');
-        this.loadingOverlay = document.getElementById('loadingOverlay');
-        this.promptInput = document.getElementById('promptInput');
-        
-        this.selectedText = '';
-        this.selectionRange = null;
-        this.lastCursorPosition = null;
-        
-        this.initializeEventListeners();
-        this.loadFromStorage();
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+// Test endpoint pro ověření API klíče
+app.get('/api/test', async (req, res) => {
+  try {
+    console.log('Testing Perplexity API...');
+    
+    if (!process.env.PERPLEXITY_API_KEY) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'PERPLEXITY_API_KEY není nastaven v environment variables' 
+      });
     }
 
-    initializeEventListeners() {
-        // Kontextové menu
-        this.editor.addEventListener('contextmenu', (e) => this.showContextMenu(e));
-        document.addEventListener('click', () => this.hideContextMenu());
-        
-        // Menu items
-        document.querySelectorAll('.menu-item').forEach(item => {
-            item.addEventListener('click', (e) => this.handleMenuClick(e));
-        });
+    const response = await axios.post('https://api.perplexity.ai/chat/completions', {
+      model: 'llama-3.1-sonar-small-128k-online',
+      messages: [{ role: 'user', content: 'Hello, test message' }],
+      max_tokens: 10
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
 
-        // Modal
-        document.getElementById('submitPrompt').addEventListener('click', () => this.submitPrompt());
-        document.getElementById('cancelPrompt').addEventListener('click', () => this.hideModal());
+    console.log('API test successful');
+    res.json({ 
+      success: true, 
+      message: 'API klíč funguje správně',
+      model: 'llama-3.1-sonar-small-128k-online'
+    });
+  } catch (error) {
+    console.error('API test failed:', error.response?.data || error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.response?.data?.error?.message || error.message,
+      status: error.response?.status
+    });
+  }
+});
 
-        // Header buttons
-        document.getElementById('saveBtn').addEventListener('click', () => this.saveToStorage());
-        document.getElementById('loadBtn').addEventListener('click', () => this.loadFromStorage());
-        document.getElementById('clearBtn').addEventListener('click', () => this.clearEditor());
-
-        // Auto-save
-        this.editor.addEventListener('input', () => this.autoSave());
-
-        // Selection tracking
-        document.addEventListener('selectionchange', () => this.trackSelection());
-        
-        // Sledování pozice kurzoru
-        this.editor.addEventListener('click', () => this.saveCursorPosition());
-        this.editor.addEventListener('keyup', () => this.saveCursorPosition());
+// Instagram obrázek endpoint
+app.post('/api/instagram-image', async (req, res) => {
+  try {
+    const { selectedText } = req.body;
+    
+    if (!selectedText) {
+      return res.status(400).json({
+        success: false,
+        error: 'Pro vytvoření Instagram obrázku musíte vybrat text'
+      });
     }
 
-    saveCursorPosition() {
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
-            this.lastCursorPosition = selection.getRangeAt(0).cloneRange();
+    console.log('Generating Instagram post for text:', selectedText.substring(0, 50));
+
+    // Nejprve vygeneruj text pro Instagram
+    const textResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
+      model: 'llama-3.1-sonar-small-128k-online',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'Jsi expert na Instagram marketing. Vytvoř poutavý text pro Instagram post v češtině. Text by měl být krátký, výstižný a vhodný pro umístění na obrázek.' 
+        },
+        { 
+          role: 'user', 
+          content: `Přepis následující text do formátu vhodného pro Instagram post (max 150 znaků, bez hashtagů): "${selectedText}"` 
         }
+      ],
+      temperature: 0.7,
+      max_tokens: 200
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000
+    });
+
+    const instagramText = textResponse.data.choices[0].message.content.trim();
+    
+    console.log('Generated Instagram text:', instagramText);
+
+    res.json({
+      success: true,
+      result: instagramText,
+      action: 'instagram-image',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Instagram image generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Chyba při generování Instagram postu: ' + (error.response?.data?.error?.message || error.message)
+    });
+  }
+});
+
+// Perplexity API proxy endpoint
+app.post('/api/perplexity', async (req, res) => {
+  try {
+    const { prompt, selectedText, action } = req.body;
+    
+    console.log('Received request:', { 
+      action, 
+      prompt: prompt?.substring(0, 50) + (prompt?.length > 50 ? '...' : ''), 
+      selectedText: selectedText?.substring(0, 50) + (selectedText?.length > 50 ? '...' : ''),
+      timestamp: new Date().toISOString()
+    });
+    
+    if (!process.env.PERPLEXITY_API_KEY) {
+      console.error('PERPLEXITY_API_KEY not found in environment variables');
+      return res.status(500).json({
+        success: false,
+        error: 'API klíč není nastaven v environment variables'
+      });
     }
 
-    restoreCursorPosition() {
-        if (this.lastCursorPosition) {
-            const selection = window.getSelection();
-            selection.removeAllRanges();
-            selection.addRange(this.lastCursorPosition);
+    let systemPrompt = "Jsi užitečný asistent, který pomáhá s úpravou textu. Odpovídej v češtině.";
+    let userPrompt = prompt;
+
+    // Přednastavené AI funkce
+    switch (action) {
+      case 'summarize':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro sumarizaci musíte vybrat text'
+          });
         }
-    }
-
-    showContextMenu(e) {
-        e.preventDefault();
-        
-        // Uložit pozici kurzoru před zobrazením menu
-        this.saveCursorPosition();
-        
-        const selection = window.getSelection();
-        this.selectedText = selection.toString().trim();
-        
-        // Aktualizuj stav menu items
-        document.querySelectorAll('.menu-item').forEach(item => {
-            const needsSelection = item.hasAttribute('data-needs-selection');
-            if (needsSelection) {
-                item.classList.toggle('disabled', !this.selectedText);
-            }
-        });
-
-        this.contextMenu.style.left = e.pageX + 'px';
-        this.contextMenu.style.top = e.pageY + 'px';
-        this.contextMenu.classList.remove('hidden');
-    }
-
-    hideContextMenu() {
-        this.contextMenu.classList.add('hidden');
-    }
-
-    handleMenuClick(e) {
-        e.stopPropagation();
-        
-        const action = e.currentTarget.dataset.action;
-        if (e.currentTarget.classList.contains('disabled')) return;
-
-        // Skrýt menu PŘED zpracováním akce
-        this.hideContextMenu();
-
-        if (action === 'generate') {
-            this.showPromptModal();
-        } else {
-            this.processAIAction(action);
+        systemPrompt = "Jsi expert na sumarizaci textu. Vytvoř stručné shrnutí daného textu v češtině.";
+        userPrompt = `Sumarizuj následující text: "${selectedText}"`;
+        break;
+      case 'twitter':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro vytvoření Twitter postu musíte vybrat text'
+          });
         }
-    }
-
-    showPromptModal() {
-        this.promptModal.classList.remove('hidden');
-        this.promptInput.focus();
-    }
-
-    hideModal() {
-        this.promptModal.classList.add('hidden');
-        this.promptInput.value = '';
-    }
-
-    async submitPrompt() {
-        const prompt = this.promptInput.value.trim();
-        if (!prompt) return;
-
-        this.hideModal();
-        await this.processAIAction('custom', prompt);
-    }
-
-    async processAIAction(action, customPrompt = '') {
-        console.log('Processing AI action:', { action, customPrompt, selectedText: this.selectedText });
-        
-        this.showLoading();
-
-        try {
-            const response = await fetch('/api/perplexity', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: action,
-                    prompt: customPrompt,
-                    selectedText: this.selectedText
-                })
-            });
-
-            console.log('Response status:', response.status);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Response error:', errorText);
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            const data = await response.json();
-            console.log('Response data:', data);
-
-            if (data.success && data.result) {
-                this.insertAIResult(data.result, action);
-            } else {
-                this.showError(data.error || 'Prázdná odpověď z API');
-            }
-        } catch (error) {
-            console.error('Request failed:', error);
-            this.showError('Chyba sítě: ' + error.message);
-        } finally {
-            this.hideLoading();
+        systemPrompt = "Jsi expert na tvorbu obsahu pro sociální sítě. Vytvoř atraktivní Twitter post v češtině.";
+        userPrompt = `Přepis následující text do formátu vhodného pro Twitter post (max 280 znaků): "${selectedText}"`;
+        break;
+      case 'instagram':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro vytvoření Instagram postu musíte vybrat text'
+          });
         }
-    }
-
-    insertAIResult(result, action) {
-        console.log('Inserting AI result:', { result: result.substring(0, 100), action });
-        
-        // Ujisti se, že editor má focus
-        this.editor.focus();
-        
-        const selection = window.getSelection();
-        
-        try {
-            if (action === 'generate' || action === 'custom') {
-                // Vložit na pozici kurzoru
-                if (this.lastCursorPosition) {
-                    selection.removeAllRanges();
-                    selection.addRange(this.lastCursorPosition);
-                }
-                
-                const range = selection.getRangeAt(0);
-                const textNode = document.createTextNode(result);
-                range.insertNode(textNode);
-                
-                // Posunout kurzor za vložený text
-                range.setStartAfter(textNode);
-                range.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                
-            } else if (this.selectedText && selection.rangeCount > 0) {
-                // Nahradit vybraný text
-                const range = selection.getRangeAt(0);
-                
-                // Pokud není nic vybráno, ale máme selectedText, najdi ho v editoru
-                if (range.collapsed && this.selectedText) {
-                    const editorText = this.editor.textContent;
-                    const textIndex = editorText.indexOf(this.selectedText);
-                    
-                    if (textIndex !== -1) {
-                        const textNode = this.findTextNode(this.editor, textIndex);
-                        if (textNode) {
-                            range.setStart(textNode.node, textNode.offset);
-                            range.setEnd(textNode.node, textNode.offset + this.selectedText.length);
-                        }
-                    }
-                }
-                
-                range.deleteContents();
-                const textNode = document.createTextNode(result);
-                range.insertNode(textNode);
-                
-                // Posunout kurzor za nahrazený text
-                range.setStartAfter(textNode);
-                range.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(range);
-            } else {
-                // Fallback - vložit na konec editoru
-                this.editor.appendChild(document.createTextNode('\n' + result));
-            }
-            
-        } catch (error) {
-            console.error('Error inserting text:', error);
-            // Fallback - vložit na konec editoru
-            this.editor.appendChild(document.createTextNode('\n' + result));
+        systemPrompt = "Jsi expert na Instagram marketing. Vytvoř poutavý text pro Instagram post v češtině.";
+        userPrompt = `Přepis následující text do formátu vhodného pro Instagram post s hashtegy: "${selectedText}"`;
+        break;
+      case 'expand':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro rozšíření textu musíte vybrat text'
+          });
         }
-        
-        // Vyčistit selectedText
-        this.selectedText = '';
-        
-        // Auto-save
-        this.autoSave();
-        
-        console.log('Text successfully inserted');
-    }
-
-    findTextNode(element, targetIndex) {
-        let currentIndex = 0;
-        
-        function traverse(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const nodeLength = node.textContent.length;
-                if (currentIndex + nodeLength > targetIndex) {
-                    return {
-                        node: node,
-                        offset: targetIndex - currentIndex
-                    };
-                }
-                currentIndex += nodeLength;
-            } else {
-                for (let child of node.childNodes) {
-                    const result = traverse(child);
-                    if (result) return result;
-                }
-            }
-            return null;
+        systemPrompt = "Jsi expert na rozšiřování a vylepšování textů. Rozšiř daný text zachováním původního významu.";
+        userPrompt = `Rozšiř a vylepši následující text: "${selectedText}"`;
+        break;
+      case 'improve':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro vylepšení textu musíte vybrat text'
+          });
         }
-        
-        return traverse(element);
-    }
-
-    trackSelection() {
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
-            this.selectionRange = selection.getRangeAt(0).cloneRange();
+        systemPrompt = "Jsi expert na jazykové korekce a stylistické úpravy. Vylepši gramatiku a styl textu.";
+        userPrompt = `Vylepši gramatiku a styl následujícího textu: "${selectedText}"`;
+        break;
+      case 'generate':
+      case 'custom':
+        if (!prompt) {
+          return res.status(400).json({
+            success: false,
+            error: 'Musíte zadat prompt pro generování textu'
+          });
         }
+        userPrompt = selectedText ? `${prompt} "${selectedText}"` : prompt;
+        break;
+      default:
+        userPrompt = selectedText ? `${prompt} "${selectedText}"` : prompt;
     }
 
-    showLoading() {
-        this.loadingOverlay.classList.remove('hidden');
+    console.log('Making API request to Perplexity...', {
+      model: 'llama-3.1-sonar-small-128k-online',
+      systemPrompt: systemPrompt.substring(0, 100) + '...',
+      userPrompt: userPrompt.substring(0, 100) + '...'
+    });
+
+    const response = await axios.post('https://api.perplexity.ai/chat/completions', {
+      model: 'llama-3.1-sonar-small-128k-online',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000 // 30 sekund timeout
+    });
+
+    console.log('API response received:', {
+      status: response.status,
+      hasChoices: !!response.data.choices,
+      choicesLength: response.data.choices?.length,
+      hasContent: !!response.data.choices?.[0]?.message?.content,
+      contentPreview: response.data.choices?.[0]?.message?.content?.substring(0, 100) + '...'
+    });
+
+    if (!response.data.choices || response.data.choices.length === 0) {
+      throw new Error('API nevrátilo žádné výsledky');
     }
 
-    hideLoading() {
-        this.loadingOverlay.classList.add('hidden');
+    if (!response.data.choices[0].message || !response.data.choices[0].message.content) {
+      throw new Error('API vrátilo prázdnou odpověď');
     }
 
-    showError(message) {
-        console.error('Error:', message);
-        alert('Chyba: ' + message);
+    const result = response.data.choices[0].message.content.trim();
+    
+    if (!result) {
+      throw new Error('API vrátilo prázdný obsah');
     }
 
-    autoSave() {
-        localStorage.setItem('editorContent', this.editor.innerHTML);
+    console.log('Sending successful response, content length:', result.length);
+
+    res.json({
+      success: true,
+      result: result,
+      action: action,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Perplexity API error:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method,
+      timeout: error.code === 'ECONNABORTED',
+      timestamp: new Date().toISOString()
+    });
+
+    let errorMessage = 'Neznámá chyba při komunikaci s AI';
+    let statusCode = 500;
+
+    if (error.response) {
+      // Server odpověděl s chybovým kódem
+      statusCode = error.response.status;
+      switch (error.response.status) {
+        case 401:
+          errorMessage = 'Neplatný API klíč';
+          break;
+        case 403:
+          errorMessage = 'Přístup zamítnut - zkontrolujte API klíč';
+          break;
+        case 429:
+          errorMessage = 'Překročen limit API požadavků';
+          break;
+        case 500:
+          errorMessage = 'Chyba na straně Perplexity serveru';
+          break;
+        default:
+          errorMessage = error.response.data?.error?.message || `HTTP ${error.response.status}`;
+      }
+    } else if (error.request) {
+      // Požadavek byl odeslán, ale nedošla odpověď
+      errorMessage = 'Timeout nebo síťová chyba';
+    } else {
+      // Chyba při sestavování požadavku
+      errorMessage = error.message;
     }
 
-    saveToStorage() {
-        localStorage.setItem('editorContent', this.editor.innerHTML);
-        this.showNotification('Dokument uložen');
-    }
+    res.status(statusCode).json({
+      success: false,
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
-    loadFromStorage() {
-        const content = localStorage.getItem('editorContent');
-        if (content) {
-            this.editor.innerHTML = content;
-            this.showNotification('Dokument načten');
-        }
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    env: {
+      hasApiKey: !!process.env.PERPLEXITY_API_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      port: PORT
     }
+  });
+});
 
-    clearEditor() {
-        if (confirm('Opravdu chcete vymazat celý obsah?')) {
-            this.editor.innerHTML = '';
-            localStorage.removeItem('editorContent');
-        }
-    }
+// Hlavní stránka
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
 
-    showNotification(message) {
-        const notification = document.createElement('div');
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #238636;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            z-index: 4000;
-            font-weight: 500;
-        `;
-        
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
-    }
-}
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    error: 'Endpoint not found',
+    path: req.originalUrl 
+  });
+});
 
-// Inicializace aplikace
-document.addEventListener('DOMContentLoaded', () => {
-    new AITextEditor();
+// Global error handler
+app.use((error, req, res, next) => {
+  console.error('Unhandled error:', error);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? error.message : undefined
+  });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server běží na portu ${PORT}`);
+  console.log(`📅 Spuštěno: ${new Date().toISOString()}`);
+  console.log(`🔑 API klíč: ${process.env.PERPLEXITY_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
