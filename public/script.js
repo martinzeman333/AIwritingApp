@@ -12,17 +12,102 @@ class InstagramImageGenerator {
         this.ctx = this.canvas.getContext('2d');
     }
 
-    generateGradientBackground() {
+    generateAIBackground(description) {
+        // Vytvoř AI-inspirované pozadí na základě popisu
+        const themes = this.parseDescription(description);
+        
+        if (themes.includes('politics') || themes.includes('news')) {
+            this.generateNewsBackground();
+        } else if (themes.includes('business') || themes.includes('finance')) {
+            this.generateBusinessBackground();
+        } else if (themes.includes('technology') || themes.includes('tech')) {
+            this.generateTechBackground();
+        } else if (themes.includes('lifestyle') || themes.includes('personal')) {
+            this.generateLifestyleBackground();
+        } else {
+            this.generateModernBackground();
+        }
+    }
+
+    parseDescription(description) {
+        const lowerDesc = description.toLowerCase();
+        const themes = [];
+        
+        if (lowerDesc.includes('politic') || lowerDesc.includes('government') || lowerDesc.includes('election')) {
+            themes.push('politics');
+        }
+        if (lowerDesc.includes('business') || lowerDesc.includes('corporate') || lowerDesc.includes('finance')) {
+            themes.push('business');
+        }
+        if (lowerDesc.includes('tech') || lowerDesc.includes('digital') || lowerDesc.includes('innovation')) {
+            themes.push('technology');
+        }
+        if (lowerDesc.includes('lifestyle') || lowerDesc.includes('personal') || lowerDesc.includes('daily')) {
+            themes.push('lifestyle');
+        }
+        
+        return themes;
+    }
+
+    generateNewsBackground() {
+        // Červeno-modrý gradient pro zprávy/politiku
+        const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+        gradient.addColorStop(0, '#1e3a8a');
+        gradient.addColorStop(0.5, '#dc2626');
+        gradient.addColorStop(1, '#1f2937');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.addNewsElements();
+    }
+
+    generateBusinessBackground() {
+        // Elegantní modrý gradient pro business
+        const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+        gradient.addColorStop(0, '#0f172a');
+        gradient.addColorStop(0.5, '#1e40af');
+        gradient.addColorStop(1, '#059669');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.addBusinessElements();
+    }
+
+    generateTechBackground() {
+        // Futuristický gradient pro technologie
+        const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+        gradient.addColorStop(0, '#7c3aed');
+        gradient.addColorStop(0.5, '#06b6d4');
+        gradient.addColorStop(1, '#10b981');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.addTechElements();
+    }
+
+    generateLifestyleBackground() {
+        // Teplý gradient pro lifestyle
+        const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+        gradient.addColorStop(0, '#f59e0b');
+        gradient.addColorStop(0.5, '#ec4899');
+        gradient.addColorStop(1, '#8b5cf6');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.addLifestyleElements();
+    }
+
+    generateModernBackground() {
+        // Výchozí moderní gradient
         const gradients = [
-            // Moderní minimalistické gradienty
             ['#667eea', '#764ba2'],
             ['#f093fb', '#f5576c'],
             ['#4facfe', '#00f2fe'],
-            ['#43e97b', '#38f9d7'],
-            ['#fa709a', '#fee140'],
-            ['#a8edea', '#fed6e3'],
-            ['#ff9a9e', '#fecfef'],
-            ['#ffecd2', '#fcb69f']
+            ['#43e97b', '#38f9d7']
         ];
 
         const selectedGradient = gradients[Math.floor(Math.random() * gradients.length)];
@@ -34,8 +119,72 @@ class InstagramImageGenerator {
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Přidej jemné geometrické tvary pro moderní vzhled
         this.addGeometricShapes();
+    }
+
+    addNewsElements() {
+        this.ctx.globalAlpha = 0.15;
+        
+        // Geometrické tvary připomínající zpravodajství
+        this.ctx.fillStyle = '#ffffff';
+        
+        // Obdélníky jako "články"
+        this.ctx.fillRect(50, 100, 200, 20);
+        this.ctx.fillRect(50, 140, 150, 20);
+        this.ctx.fillRect(50, 180, 180, 20);
+        
+        this.ctx.globalAlpha = 1;
+    }
+
+    addBusinessElements() {
+        this.ctx.globalAlpha = 0.1;
+        
+        // Grafy a čáry
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 3;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(100, 300);
+        this.ctx.lineTo(200, 250);
+        this.ctx.lineTo(300, 280);
+        this.ctx.lineTo(400, 200);
+        this.ctx.stroke();
+        
+        this.ctx.globalAlpha = 1;
+    }
+
+    addTechElements() {
+        this.ctx.globalAlpha = 0.1;
+        
+        // Technologické vzory
+        this.ctx.fillStyle = '#ffffff';
+        
+        for (let i = 0; i < 20; i++) {
+            const x = Math.random() * this.canvas.width;
+            const y = Math.random() * this.canvas.height;
+            const size = Math.random() * 5 + 2;
+            
+            this.ctx.fillRect(x, y, size, size);
+        }
+        
+        this.ctx.globalAlpha = 1;
+    }
+
+    addLifestyleElements() {
+        this.ctx.globalAlpha = 0.12;
+        
+        // Organické tvary
+        this.ctx.fillStyle = '#ffffff';
+        
+        this.ctx.beginPath();
+        this.ctx.arc(200, 200, 80, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        this.ctx.beginPath();
+        this.ctx.arc(800, 400, 60, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        this.ctx.globalAlpha = 1;
     }
 
     addGeometricShapes() {
@@ -85,17 +234,17 @@ class InstagramImageGenerator {
         this.ctx.textBaseline = 'middle';
 
         // Stín pro lepší čitelnost
-        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowOffsetX = 2;
-        this.ctx.shadowOffsetY = 2;
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.shadowBlur = 15;
+        this.ctx.shadowOffsetX = 3;
+        this.ctx.shadowOffsetY = 3;
 
         // Bílý text s černým obrysem
         this.ctx.fillStyle = '#ffffff';
         this.ctx.strokeStyle = '#000000';
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = 6;
 
-        const maxWidth = this.canvas.width * 0.8;
+        const maxWidth = this.canvas.width * 0.85;
         const lines = this.wrapText(text, maxWidth);
         const lineHeight = 90;
         const startY = this.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
@@ -113,12 +262,12 @@ class InstagramImageGenerator {
         this.ctx.shadowOffsetY = 0;
     }
 
-    generateImage(text) {
+    generateImage(text, imageDescription = '') {
         // Vyčisti canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Vygeneruj pozadí
-        this.generateGradientBackground();
+        // Vygeneruj AI pozadí na základě popisu
+        this.generateAIBackground(imageDescription);
         
         // Přidej text
         this.addTextToImage(text);
@@ -274,11 +423,14 @@ class AITextEditor {
             const data = await response.json();
 
             if (data.success && data.result) {
-                // Vygeneruj obrázek s textem
-                const imageDataUrl = this.imageGenerator.generateImage(data.result);
+                // Vygeneruj obrázek s AI pozadím
+                const imageDataUrl = this.imageGenerator.generateImage(
+                    data.result, 
+                    data.imageDescription || ''
+                );
                 
-                // Zobraz obrázek v novém okně
-                this.showInstagramImage(imageDataUrl, data.result);
+                // Zobraz obrázek v novém okně s hashtags
+                this.showInstagramImage(imageDataUrl, data.result, data.hashtags || '');
             } else {
                 this.showError(data.error || 'Chyba při generování Instagram postu');
             }
@@ -290,7 +442,7 @@ class AITextEditor {
         }
     }
 
-    showInstagramImage(imageDataUrl, text) {
+    showInstagramImage(imageDataUrl, text, hashtags) {
         // Vytvoř modal pro zobrazení obrázku
         const modal = document.createElement('div');
         modal.className = 'image-modal';
@@ -303,9 +455,20 @@ class AITextEditor {
                 <div class="image-container">
                     <img src="${imageDataUrl}" alt="Instagram post" />
                 </div>
+                <div class="instagram-content">
+                    <div class="text-section">
+                        <label>📝 Text:</label>
+                        <textarea readonly>${text}</textarea>
+                    </div>
+                    <div class="hashtags-section">
+                        <label>🏷️ Hashtags:</label>
+                        <textarea readonly>${hashtags}</textarea>
+                    </div>
+                </div>
                 <div class="image-modal-actions">
-                    <button class="btn-secondary" id="downloadBtn">💾 Stáhnout</button>
-                    <button class="btn-primary" id="insertTextBtn">📝 Vložit text</button>
+                    <button class="btn-secondary" id="downloadBtn">💾 Stáhnout obrázek</button>
+                    <button class="btn-secondary" id="copyTextBtn">📋 Kopírovat text</button>
+                    <button class="btn-primary" id="insertAllBtn">📝 Vložit vše</button>
                 </div>
             </div>
         `;
@@ -322,6 +485,7 @@ class AITextEditor {
             justify-content: center;
             align-items: center;
             z-index: 5000;
+            overflow-y: auto;
         `;
 
         document.body.appendChild(modal);
@@ -339,8 +503,16 @@ class AITextEditor {
             link.click();
         };
 
-        modal.querySelector('#insertTextBtn').onclick = () => {
-            this.insertAIResult(text, 'instagram');
+        modal.querySelector('#copyTextBtn').onclick = () => {
+            const fullText = `${text}\n\n${hashtags}`;
+            navigator.clipboard.writeText(fullText).then(() => {
+                this.showNotification('Text zkopírován do schránky');
+            });
+        };
+
+        modal.querySelector('#insertAllBtn').onclick = () => {
+            const fullText = `${text}\n\n${hashtags}`;
+            this.insertAIResult(fullText, 'instagram');
             modal.remove();
         };
     }
