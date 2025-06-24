@@ -77,50 +77,10 @@ class InstagramImageGenerator {
         ctx.globalAlpha = 1;
     }
 
-    // OPRAVA: Nadpis umístěný ve spodní části s tmavým pozadím
+    // OPRAVA: Metoda pro text - zatím nepoužíváme
     addTitleToSlide(ctx, title) {
-        // Nastavení fontu - menší než dříve
-        ctx.font = 'bold 60px Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom'; // OPRAVA: Změněno z 'middle' na 'bottom'
-
-        const maxWidth = ctx.canvas.width * 0.85;
-        const lines = this.wrapText(ctx, title, maxWidth);
-        const lineHeight = 75;
-        
-        // OPRAVA: Umístění ve spodní části
-        const bottomPadding = 60;
-        const textHeight = lines.length * lineHeight;
-        const backgroundHeight = textHeight + 40;
-        
-        // Vytvoř tmavé pozadí pro text
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, ctx.canvas.height - backgroundHeight - bottomPadding, ctx.canvas.width, backgroundHeight + bottomPadding);
-        
-        // Nastavení stylu textu
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowBlur = 15;
-        ctx.shadowOffsetX = 3;
-        ctx.shadowOffsetY = 3;
-
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 6;
-
-        // Výpočet pozice textu ve spodní části
-        const startY = ctx.canvas.height - bottomPadding - (lines.length - 1) * lineHeight;
-
-        lines.forEach((line, index) => {
-            const y = startY + index * lineHeight;
-            ctx.strokeText(line, ctx.canvas.width / 2, y);
-            ctx.fillText(line, ctx.canvas.width / 2, y);
-        });
-
-        // Vyčisti stíny
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+        // ZATÍM NEPOUŽÍVÁME - způsobuje problémy s načítáním obrázků
+        console.log('Title method called but not executed to avoid image loading issues');
     }
 
     addTextToSlide(ctx, text) {
@@ -688,11 +648,11 @@ class AITextEditor {
         this.createPreviewSlide2(ctx2);
     }
 
-    // OPRAVA: Preview slide s obrázkem a nadpisem ve spodní části
+    // OPRAVA: Slide 1 bez textu - jen pixel art obrázek
     async createPreviewSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        console.log('🎮 Creating preview slide 1 with bottom title (PIXEL ART)...');
+        console.log('🎮 Creating preview slide 1 with PIXEL ART only (no text)...');
         
         try {
             if (this.currentInstagramPost?.backgroundImageUrl) {
@@ -708,6 +668,7 @@ class AITextEditor {
                         if (!resolved) {
                             resolved = true;
                             console.log('✅ Pixel art background image loaded successfully');
+                            // OPRAVA: Jen obrázek, žádný text
                             ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
                             resolve(true);
                         }
@@ -739,52 +700,8 @@ class AITextEditor {
                 this.imageGenerator.createGradientBackground(ctx);
             }
             
-            // OPRAVA: Přidej nadpis s menším fontem ve spodní části s tmavým pozadím
-            if (this.currentInstagramPost?.title) {
-                // Menší font pro preview
-                ctx.font = 'bold 18px Arial, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom'; // OPRAVA: Změněno na bottom
-
-                const maxWidth = ctx.canvas.width * 0.85;
-                const lines = this.imageGenerator.wrapText(ctx, this.currentInstagramPost.title, maxWidth);
-                const lineHeight = 22;
-                
-                // Výpočet pozice ve spodní části
-                const bottomPadding = 15;
-                const textHeight = lines.length * lineHeight;
-                const backgroundHeight = textHeight + 20;
-                
-                // Tmavé pozadí pro text
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.fillRect(0, ctx.canvas.height - backgroundHeight - bottomPadding, ctx.canvas.width, backgroundHeight + bottomPadding);
-                
-                // Styl textu
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-                ctx.shadowBlur = 4;
-                ctx.shadowOffsetX = 1;
-                ctx.shadowOffsetY = 1;
-
-                ctx.fillStyle = '#ffffff';
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 2;
-
-                const startY = ctx.canvas.height - bottomPadding - (lines.length - 1) * lineHeight;
-
-                lines.forEach((line, index) => {
-                    const y = startY + index * lineHeight;
-                    ctx.strokeText(line, ctx.canvas.width / 2, y);
-                    ctx.fillText(line, ctx.canvas.width / 2, y);
-                });
-
-                // Vyčisti stíny
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
-            }
-            
-            console.log('✅ Preview slide 1 created with bottom title (PIXEL ART)');
+            // OPRAVA: ŽÁDNÝ TEXT - jen čistý obrázek
+            console.log('✅ Preview slide 1 created (PIXEL ART only, no text overlay)');
             
         } catch (error) {
             console.error('❌ Error creating preview slide 1:', error);
@@ -928,7 +845,7 @@ class AITextEditor {
         });
     }
 
-    // OPRAVA: Full-size slide s nadpisem ve spodní části
+    // OPRAVA: Full-size slide bez textu
     async createFullSizeSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
@@ -939,6 +856,7 @@ class AITextEditor {
                 
                 await new Promise((resolve, reject) => {
                     img.onload = () => {
+                        // OPRAVA: Jen obrázek, žádný text
                         ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
                         resolve();
                     };
@@ -952,17 +870,11 @@ class AITextEditor {
                 this.imageGenerator.createGradientBackground(ctx);
             }
             
-            // OPRAVA: Použij metodu s nadpisem ve spodní části
-            if (this.currentInstagramPost.title) {
-                this.imageGenerator.addTitleToSlide(ctx, this.currentInstagramPost.title);
-            }
+            // OPRAVA: ŽÁDNÝ TEXT - jen čistý obrázek
             
         } catch (error) {
             console.error('Error creating full-size slide 1:', error);
             this.imageGenerator.createGradientBackground(ctx);
-            if (this.currentInstagramPost.title) {
-                this.imageGenerator.addTitleToSlide(ctx, this.currentInstagramPost.title);
-            }
         }
     }
 
@@ -1259,9 +1171,9 @@ class AITextEditor {
         await this.processAIAction('custom', prompt);
     }
 
-    // OPRAVA: Instagram carousel funkce s pixel art stylem
+    // OPRAVA: Instagram carousel funkce s pixel art stylem - bez textu na prvním slide
     async processInstagramImage() {
-        console.log('🎮 Processing Instagram carousel with PIXEL ART style for text:', this.selectedText);
+        console.log('🎮 Processing Instagram carousel with PIXEL ART style (no text overlay):', this.selectedText);
         
         if (!this.selectedText) {
             this.showError('Musíte vybrat text pro vytvoření Instagram carousel');
@@ -1269,7 +1181,7 @@ class AITextEditor {
         }
         
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s pixel art ilustrací...';
+        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s pixel art ilustrací (bez textu na pozadí)...';
 
         try {
             const response = await fetch('/api/instagram-image', {
@@ -1303,7 +1215,7 @@ class AITextEditor {
     }
 
     async showInstagramPreview(data) {
-        console.log('🎮 Showing Instagram preview with PIXEL ART data:', data);
+        console.log('🎮 Showing Instagram preview with PIXEL ART (no text overlay):', data);
         
         this.currentInstagramPost = {
             id: null,
@@ -1327,7 +1239,7 @@ class AITextEditor {
 
         this.showInstagramSidebar();
         await this.updateInstagramPreview();
-        this.showNotification('Instagram carousel vygenerován s pixel art stylem a nadpisem ve spodní části!');
+        this.showNotification('Instagram carousel vygenerován s pixel art stylem (čistý obrázek bez textu)!');
     }
 
     async processAIAction(action, customPrompt = '') {
@@ -1514,24 +1426,14 @@ document.addEventListener('DOMContentLoaded', () => {
     new AITextEditor();
 });
 
-// Debug funkce pro testování pixel art
-window.testPixelArtCarousel = function() {
-    console.log('🎮 Testing pixel art Instagram carousel...');
+// Debug funkce pro testování pixel art bez textu
+window.testPixelArtOnly = function() {
+    console.log('🎮 Testing pixel art Instagram carousel (no text overlay)...');
     
     if (globalEditor) {
-        globalEditor.selectedText = 'Test text pro pixel art Instagram carousel';
+        globalEditor.selectedText = 'Test text pro pixel art Instagram carousel bez textu';
         globalEditor.processInstagramImage();
-        console.log('✅ Pixel art Instagram carousel test triggered');
-    } else {
-        console.error('❌ Global editor not found');
-    }
-};
-
-window.testImageLoading = function() {
-    console.log('🧪 Testing image loading...');
-    
-    if (globalEditor) {
-        globalEditor.testImageLoading();
+        console.log('✅ Pixel art Instagram carousel test triggered (image only)');
     } else {
         console.error('❌ Global editor not found');
     }
