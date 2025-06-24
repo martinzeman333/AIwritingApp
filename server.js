@@ -3,13 +3,14 @@ const cors = require('cors');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const FormData = require('form-data');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
 // Test endpoint pro ověření API klíče
@@ -52,7 +53,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// AI Image generation endpoint
+// Reálné AI Image generation endpoint
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -66,14 +67,130 @@ app.post('/api/generate-image', async (req, res) => {
 
     console.log('Generating AI image for prompt:', prompt);
 
-    // Simulace AI generování obrázku - v reálné aplikaci by se použilo DALL-E, Midjourney API, nebo Stable Diffusion
-    // Pro demo účely vracíme placeholder
-    const imageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
+    let imageUrl = null;
+    let generationMethod = 'none';
+
+    // Pokus 1: OpenAI DALL-E API
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        console.log('Trying OpenAI DALL-E generation...');
+        
+        const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
+          model: 'dall-e-3',
+          prompt: prompt,
+          n: 1,
+          size: '1024x1024',
+          quality: 'hd',
+          style: 'natural'
+        }, {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 120000
+        });
+
+        if (openaiResponse.data.data?.[0]?.url) {
+          imageUrl = openaiResponse.data.data[0].url;
+          generationMethod = 'openai-dalle3';
+          console.log('Image generated via OpenAI DALL-E 3:', imageUrl);
+        }
+      } catch (openaiError) {
+        console.log('OpenAI DALL-E generation failed:', openaiError.response?.data || openaiError.message);
+      }
+    }
+
+    // Pokus 2: Fallback na DALL-E 2
+    if (!imageUrl && process.env.OPENAI_API_KEY) {
+      try {
+        console.log('Trying OpenAI DALL-E 2 generation...');
+        
+        const dalle2Response = await axios.post('https://api.openai.com/v1/images/generations', {
+          prompt: prompt,
+          n: 1,
+          size: '1024x1024'
+        }, {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
+        });
+
+        if (dalle2Response.data.data?.[0]?.url) {
+          imageUrl = dalle2Response.data.data[0].url;
+          generationMethod = 'openai-dalle2';
+          console.log('Image generated via OpenAI DALL-E 2:', imageUrl);
+        }
+      } catch (dalle2Error) {
+        console.log('OpenAI DALL-E 2 generation failed:', dalle2Error.response?.data || dalle2Error.message);
+      }
+    }
+
+    // Pokus 3: Pokud máme Perplexity, zkusíme získat lepší prompt a pak použít OpenAI
+    if (!imageUrl && process.env.PERPLEXITY_API_KEY && process.env.OPENAI_API_KEY) {
+      try {
+        console.log('Enhancing prompt via Perplexity...');
+        
+        const enhancedPromptResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
+          model: 'llama-3.1-sonar-small-128k-online',
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are an expert at creating detailed, artistic prompts for AI image generation. Create a detailed, visual prompt in English that will produce a high-quality image.' 
+            },
+            { 
+              role: 'user', 
+              content: `Enhance this prompt for AI image generation: "${prompt}". Make it more detailed and artistic while keeping the core concept.` 
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 200
+        }, {
+          headers: {
+            'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        });
+
+        const enhancedPrompt = enhancedPromptResponse.data.choices[0].message.content.trim();
+        console.log('Enhanced prompt:', enhancedPrompt);
+
+        const enhancedImageResponse = await axios.post('https://api.openai.com/v1/images/generations', {
+          prompt: enhancedPrompt,
+          n: 1,
+          size: '1024x1024'
+        }, {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
+        });
+
+        if (enhancedImageResponse.data.data?.[0]?.url) {
+          imageUrl = enhancedImageResponse.data.data[0].url;
+          generationMethod = 'perplexity-enhanced-openai';
+          console.log('Image generated via Perplexity-enhanced OpenAI:', imageUrl);
+        }
+      } catch (enhancedError) {
+        console.log('Perplexity-enhanced generation failed:', enhancedError.message);
+      }
+    }
+
+    // Pokud se nepodařilo vygenerovat obrázek, použij placeholder
+    if (!imageUrl) {
+      console.log('All AI image generation methods failed, using placeholder');
+      imageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
+      generationMethod = 'placeholder';
+    }
     
     res.json({
       success: true,
       imageUrl: imageUrl,
       prompt: prompt,
+      generationMethod: generationMethod,
       timestamp: new Date().toISOString()
     });
 
@@ -86,7 +203,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// Instagram post endpoint
+// Skutečné Instagram postování
 app.post('/api/post-to-instagram', async (req, res) => {
   try {
     const { imageData, caption, hashtags } = req.body;
@@ -98,33 +215,103 @@ app.post('/api/post-to-instagram', async (req, res) => {
       });
     }
 
+    // Zkontroluj potřebné environment variables
+    if (!process.env.INSTAGRAM_ACCESS_TOKEN || !process.env.INSTAGRAM_USER_ID) {
+      return res.status(500).json({
+        success: false,
+        error: 'Instagram API credentials nejsou nastaveny. Potřebujete INSTAGRAM_ACCESS_TOKEN a INSTAGRAM_USER_ID.'
+      });
+    }
+
     console.log('Posting to Instagram...');
 
-    // Zde by se implementovalo skutečné postování na Instagram přes Instagram Graph API
-    // Pro demo účely simulujeme úspěšné postování
-    
-    // V reálné aplikaci:
-    // 1. Nahrát obrázek na Instagram
-    // 2. Vytvořit media container
-    // 3. Publikovat post s textem a hashtags
-    
     const fullCaption = `${caption}\n\n${hashtags}`;
+    const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+    const igUserId = process.env.INSTAGRAM_USER_ID;
+
+    // Krok 1: Nahrát obrázek a vytvořit media container
+    console.log('Step 1: Creating media container...');
     
-    // Simulace úspěšného postování
-    setTimeout(() => {
-      res.json({
-        success: true,
-        message: 'Příspěvek byl úspěšně zveřejněn na Instagramu!',
-        postId: `post_${Date.now()}`,
-        timestamp: new Date().toISOString()
+    let imageUrl = imageData;
+    
+    // Pokud je imageData base64, musíme ji nahrát někam veřejně dostupné
+    if (imageData.startsWith('data:image')) {
+      // Pro demo - v produkci byste nahráli na AWS S3, Cloudinary, atd.
+      console.log('Base64 image detected - you need to upload it to a public URL first');
+      return res.status(400).json({
+        success: false,
+        error: 'Base64 obrázky nejsou podporovány. Obrázek musí být dostupný na veřejné URL.'
       });
-    }, 2000);
+    }
+
+    const mediaContainerResponse = await axios.post(
+      `https://graph.facebook.com/v18.0/${igUserId}/media`,
+      {
+        image_url: imageUrl,
+        caption: fullCaption,
+        access_token: accessToken
+      }
+    );
+
+    const containerId = mediaContainerResponse.data.id;
+    console.log('Media container created:', containerId);
+
+    // Krok 2: Čekat až bude container FINISHED
+    console.log('Step 2: Waiting for container to be ready...');
+    
+    let containerStatus = 'IN_PROGRESS';
+    let attempts = 0;
+    const maxAttempts = 30; // 30 sekund max
+
+    while (containerStatus !== 'FINISHED' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Čekej 1 sekundu
+      
+      const statusResponse = await axios.get(
+        `https://graph.facebook.com/v18.0/${containerId}?fields=status_code&access_token=${accessToken}`
+      );
+      
+      containerStatus = statusResponse.data.status_code;
+      console.log(`Container status: ${containerStatus} (attempt ${attempts + 1})`);
+      
+      if (containerStatus === 'ERROR') {
+        throw new Error('Media container processing failed');
+      }
+      
+      attempts++;
+    }
+
+    if (containerStatus !== 'FINISHED') {
+      throw new Error('Media container processing timeout');
+    }
+
+    // Krok 3: Publikovat media container
+    console.log('Step 3: Publishing media container...');
+    
+    const publishResponse = await axios.post(
+      `https://graph.facebook.com/v18.0/${igUserId}/media_publish`,
+      {
+        creation_id: containerId,
+        access_token: accessToken
+      }
+    );
+
+    const mediaId = publishResponse.data.id;
+    console.log('Media published successfully:', mediaId);
+
+    res.json({
+      success: true,
+      message: 'Příspěvek byl úspěšně zveřejněn na Instagramu!',
+      mediaId: mediaId,
+      containerId: containerId,
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
-    console.error('Instagram posting error:', error);
+    console.error('Instagram posting error:', error.response?.data || error.message);
     res.status(500).json({
       success: false,
-      error: 'Chyba při zveřejňování na Instagramu: ' + error.message
+      error: 'Chyba při zveřejňování na Instagramu: ' + (error.response?.data?.error?.message || error.message),
+      details: error.response?.data
     });
   }
 });
@@ -247,12 +434,243 @@ app.post('/api/instagram-image', async (req, res) => {
   }
 });
 
-// Zbytek endpoints zůstává stejný...
-// [Zde by pokračovaly ostatní endpoints z předchozího server.js]
+// Perplexity API proxy endpoint
+app.post('/api/perplexity', async (req, res) => {
+  try {
+    const { prompt, selectedText, action } = req.body;
+    
+    console.log('Received request:', { 
+      action, 
+      prompt: prompt?.substring(0, 50) + (prompt?.length > 50 ? '...' : ''), 
+      selectedText: selectedText?.substring(0, 50) + (selectedText?.length > 50 ? '...' : ''),
+      timestamp: new Date().toISOString()
+    });
+    
+    if (!process.env.PERPLEXITY_API_KEY) {
+      console.error('PERPLEXITY_API_KEY not found in environment variables');
+      return res.status(500).json({
+        success: false,
+        error: 'API klíč není nastaven v environment variables'
+      });
+    }
+
+    let systemPrompt = "Jsi užitečný asistent, který pomáhá s úpravou textu. Odpovídej v češtině.";
+    let userPrompt = prompt;
+
+    // Přednastavené AI funkce
+    switch (action) {
+      case 'summarize':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro sumarizaci musíte vybrat text'
+          });
+        }
+        systemPrompt = "Jsi expert na sumarizaci textu. Vytvoř stručné shrnutí daného textu v češtině.";
+        userPrompt = `Sumarizuj následující text: "${selectedText}"`;
+        break;
+      case 'twitter':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro vytvoření Twitter postu musíte vybrat text'
+          });
+        }
+        systemPrompt = "Jsi expert na tvorbu obsahu pro sociální sítě. Vytvoř atraktivní Twitter post v češtině.";
+        userPrompt = `Přepis následující text do formátu vhodného pro Twitter post (max 280 znaků): "${selectedText}"`;
+        break;
+      case 'instagram':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro vytvoření Instagram postu musíte vybrat text'
+          });
+        }
+        systemPrompt = "Jsi expert na Instagram marketing. Vytvoř poutavý text pro Instagram post v češtině bez speciálních značek.";
+        userPrompt = `Přepis následující text do formátu vhodného pro Instagram post s hashtegy: "${selectedText}"`;
+        break;
+      case 'expand':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro rozšíření textu musíte vybrat text'
+          });
+        }
+        systemPrompt = "Jsi expert na rozšiřování a vylepšování textů. Rozšiř daný text zachováním původního významu.";
+        userPrompt = `Rozšiř a vylepši následující text: "${selectedText}"`;
+        break;
+      case 'improve':
+        if (!selectedText) {
+          return res.status(400).json({
+            success: false,
+            error: 'Pro vylepšení textu musíte vybrat text'
+          });
+        }
+        systemPrompt = "Jsi expert na jazykové korekce a stylistické úpravy. Vylepši gramatiku a styl textu.";
+        userPrompt = `Vylepši gramatiku a styl následujícího textu: "${selectedText}"`;
+        break;
+      case 'generate':
+      case 'custom':
+        if (!prompt) {
+          return res.status(400).json({
+            success: false,
+            error: 'Musíte zadat prompt pro generování textu'
+          });
+        }
+        userPrompt = selectedText ? `${prompt} "${selectedText}"` : prompt;
+        break;
+      default:
+        userPrompt = selectedText ? `${prompt} "${selectedText}"` : prompt;
+    }
+
+    console.log('Making API request to Perplexity...', {
+      model: 'llama-3.1-sonar-small-128k-online',
+      systemPrompt: systemPrompt.substring(0, 100) + '...',
+      userPrompt: userPrompt.substring(0, 100) + '...'
+    });
+
+    const response = await axios.post('https://api.perplexity.ai/chat/completions', {
+      model: 'llama-3.1-sonar-small-128k-online',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000 // 30 sekund timeout
+    });
+
+    console.log('API response received:', {
+      status: response.status,
+      hasChoices: !!response.data.choices,
+      choicesLength: response.data.choices?.length,
+      hasContent: !!response.data.choices?.[0]?.message?.content,
+      contentPreview: response.data.choices?.[0]?.message?.content?.substring(0, 100) + '...'
+    });
+
+    if (!response.data.choices || response.data.choices.length === 0) {
+      throw new Error('API nevrátilo žádné výsledky');
+    }
+
+    if (!response.data.choices[0].message || !response.data.choices[0].message.content) {
+      throw new Error('API vrátilo prázdnou odpověď');
+    }
+
+    const result = response.data.choices[0].message.content.trim();
+    
+    if (!result) {
+      throw new Error('API vrátilo prázdný obsah');
+    }
+
+    console.log('Sending successful response, content length:', result.length);
+
+    res.json({
+      success: true,
+      result: result,
+      action: action,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Perplexity API error:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method,
+      timeout: error.code === 'ECONNABORTED',
+      timestamp: new Date().toISOString()
+    });
+
+    let errorMessage = 'Neznámá chyba při komunikaci s AI';
+    let statusCode = 500;
+
+    if (error.response) {
+      // Server odpověděl s chybovým kódem
+      statusCode = error.response.status;
+      switch (error.response.status) {
+        case 401:
+          errorMessage = 'Neplatný API klíč';
+          break;
+        case 403:
+          errorMessage = 'Přístup zamítnut - zkontrolujte API klíč';
+          break;
+        case 429:
+          errorMessage = 'Překročen limit API požadavků';
+          break;
+        case 500:
+          errorMessage = 'Chyba na straně Perplexity serveru';
+          break;
+        default:
+          errorMessage = error.response.data?.error?.message || `HTTP ${error.response.status}`;
+      }
+    } else if (error.request) {
+      // Požadavek byl odeslán, ale nedošla odpověď
+      errorMessage = 'Timeout nebo síťová chyba';
+    } else {
+      // Chyba při sestavování požadavku
+      errorMessage = error.message;
+    }
+
+    res.status(statusCode).json({
+      success: false,
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    env: {
+      hasPerplexityKey: !!process.env.PERPLEXITY_API_KEY,
+      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      hasInstagramToken: !!process.env.INSTAGRAM_ACCESS_TOKEN,
+      hasInstagramUserId: !!process.env.INSTAGRAM_USER_ID,
+      nodeEnv: process.env.NODE_ENV,
+      port: PORT
+    }
+  });
+});
+
+// Hlavní stránka
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    error: 'Endpoint not found',
+    path: req.originalUrl 
+  });
+});
+
+// Global error handler
+app.use((error, req, res, next) => {
+  console.error('Unhandled error:', error);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? error.message : undefined
+  });
+});
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server běží na portu ${PORT}`);
   console.log(`📅 Spuštěno: ${new Date().toISOString()}`);
-  console.log(`🔑 API klíč: ${process.env.PERPLEXITY_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
+  console.log(`🔑 Perplexity API: ${process.env.PERPLEXITY_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
+  console.log(`🤖 OpenAI API: ${process.env.OPENAI_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
+  console.log(`📸 Instagram Token: ${process.env.INSTAGRAM_ACCESS_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
+  console.log(`👤 Instagram User ID: ${process.env.INSTAGRAM_USER_ID ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
