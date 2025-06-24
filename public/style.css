@@ -1,0 +1,264 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #30363d;
+}
+
+h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #f0f6fc;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: #238636;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2ea043;
+}
+
+.btn-secondary {
+    background: #21262d;
+    color: #f0f6fc;
+    border: 1px solid #30363d;
+}
+
+.btn-secondary:hover {
+    background: #30363d;
+}
+
+#editor {
+    width: 100%;
+    min-height: 500px;
+    padding: 30px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1.8;
+    outline: none;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    transition: border-color 0.2s ease;
+}
+
+#editor:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+#editor:empty:before {
+    content: attr(placeholder);
+    color: #6e7681;
+    font-style: italic;
+}
+
+/* Kontextové menu */
+.context-menu {
+    position: fixed;
+    background: #1c2128;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    min-width: 200px;
+    padding: 8px 0;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    gap: 12px;
+}
+
+.menu-item:hover {
+    background: #262c36;
+}
+
+.menu-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.menu-item.disabled:hover {
+    background: transparent;
+}
+
+.menu-item .icon {
+    font-size: 16px;
+    width: 18px;
+    text-align: center;
+}
+
+.menu-separator {
+    height: 1px;
+    background: #30363d;
+    margin: 6px 0;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: #1c2128;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+.modal-content h3 {
+    margin-bottom: 16px;
+    color: #f0f6fc;
+    font-size: 1.3rem;
+}
+
+#promptInput {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #e6edf3;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 16px;
+}
+
+#promptInput:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+}
+
+.loading-spinner {
+    text-align: center;
+    color: #f0f6fc;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid #30363d;
+    border-top: 3px solid #58a6ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Responsivní design */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    
+    .header-actions {
+        justify-content: center;
+    }
+    
+    #editor {
+        padding: 20px;
+        min-height: 400px;
+        font-size: 15px;
+    }
+    
+    .modal-content {
+        margin: 20px;
+        width: auto;
+    }
+}

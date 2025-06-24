@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Textový Editor</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="favicon.ico">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✨ AI Textový Editor</h1>
+            <div class="header-actions">
+                <button id="saveBtn" class="btn-secondary">💾 Uložit</button>
+                <button id="loadBtn" class="btn-secondary">📂 Načíst</button>
+                <button id="clearBtn" class="btn-secondary">🗑️ Vymazat</button>
+            </div>
+        </header>
+
+        <main>
+            <div id="editor" contenteditable="true" placeholder="Začni psát... Klikni pravým tlačítkem pro AI asistenta"></div>
+        </main>
+
+        <!-- Kontextové menu -->
+        <div id="contextMenu" class="context-menu hidden">
+            <div class="menu-item" data-action="generate">
+                <span class="icon">✨</span>
+                <span>Generovat text</span>
+            </div>
+            <div class="menu-separator"></div>
+            <div class="menu-item" data-action="summarize" data-needs-selection="true">
+                <span class="icon">📝</span>
+                <span>Sumarizovat</span>
+            </div>
+            <div class="menu-item" data-action="twitter" data-needs-selection="true">
+                <span class="icon">🐦</span>
+                <span>Twitter post</span>
+            </div>
+            <div class="menu-item" data-action="instagram" data-needs-selection="true">
+                <span class="icon">📸</span>
+                <span>Instagram post</span>
+            </div>
+            <div class="menu-item" data-action="expand" data-needs-selection="true">
+                <span class="icon">📈</span>
+                <span>Rozšířit text</span>
+            </div>
+            <div class="menu-item" data-action="improve" data-needs-selection="true">
+                <span class="icon">✏️</span>
+                <span>Vylepšit text</span>
+            </div>
+        </div>
+
+        <!-- Modal pro vlastní prompt -->
+        <div id="promptModal" class="modal hidden">
+            <div class="modal-content">
+                <h3>✨ AI Asistent</h3>
+                <textarea id="promptInput" placeholder="Zadej instrukce pro AI..."></textarea>
+                <div class="modal-actions">
+                    <button id="cancelPrompt" class="btn-secondary">Zrušit</button>
+                    <button id="submitPrompt" class="btn-primary">Generovat</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>AI pracuje na vašem textu...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
