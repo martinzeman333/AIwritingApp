@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// AI Image generation s více službami
+// AI Image generation s komixovým stylem
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -99,7 +99,7 @@ app.post('/api/generate-image', async (req, res) => {
       }
     }
 
-    // Pokus 2: Stability AI (pokud máte API klíč)
+    // Pokus 2: Stability AI s komixovým stylem
     if (process.env.STABILITY_API_KEY && !imageUrl) {
       try {
         console.log('Trying Stability AI...');
@@ -200,7 +200,7 @@ app.post('/api/instagram-image', async (req, res) => {
       messages: [
         { 
           role: 'system', 
-          content: 'Vytvoř krátký, poutavý nadpis v češtině pro Instagram obrázek. Nadpis by měl být výstižný a lákavý (max 40 znaků). NEPOUŽÍVEJ ŽÁDNÉ markdown značky jako #, *, **, _, ```
+          content: 'Vytvoř krátký, poutavý nadpis v češtině pro Instagram obrázek. Nadpis by měl být výstižný a lákavý (max 40 znaků). NEPOUŽÍVEJ ŽÁDNÉ markdown značky jako #, *, **, _, nebo ---. Odpověz pouze čistým textem.' 
         },
         { 
           role: 'user', 
@@ -223,7 +223,7 @@ app.post('/api/instagram-image', async (req, res) => {
       messages: [
         { 
           role: 'system', 
-          content: 'Vytvoř stručný, poutavý text pro Instagram carousel slide v češtině. Text by měl být čitelný na obrázku (max 200 znaků). NEPOUŽÍVEJ ŽÁDNÉ markdown značky jako #, *, **, _, ```, ---, ####. Nepoužívaj odrážky s - nebo *. Nepoužívej nadpisy. Piš pouze čistý text bez jakéhokoliv formátování. Odpověz pouze prostým textem.' 
+          content: 'Vytvoř stručný, poutavý text pro Instagram carousel slide v češtině. Text by měl být čitelný na obrázku (max 200 znaků). NEPOUŽÍVEJ ŽÁDNÉ markdown značky jako #, *, **, _, ---, ####. Nepoužívej odrážky s - nebo *. Nepoužívej nadpisy. Piš pouze čistý text bez jakéhokoliv formátování. Odpověz pouze prostým textem.' 
         },
         { 
           role: 'user', 
@@ -396,7 +396,7 @@ app.post('/api/perplexity', async (req, res) => {
       });
     }
 
-    let systemPrompt = "Jsi užitečný asistent, který pomáhá s úpravou textu. Odpovídej v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ```
+    let systemPrompt = "Jsi užitečný asistent, který pomáhá s úpravou textu. Odpovídej v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ---. Odpovídej pouze čistým textem.";
     let userPrompt = prompt;
 
     // Přednastavené AI funkce s anti-markdown instrukcemi
@@ -408,7 +408,7 @@ app.post('/api/perplexity', async (req, res) => {
             error: 'Pro sumarizaci musíte vybrat text'
           });
         }
-        systemPrompt = "Jsi expert na sumarizaci textu. Vytvoř stručné shrnutí daného textu v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ```, ---, ####. Nepoužívej odrážky. Odpovídej pouze čistým textem.";
+        systemPrompt = "Jsi expert na sumarizaci textu. Vytvoř stručné shrnutí daného textu v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ---, ####. Nepoužívej odrážky. Odpovídej pouze čistým textem.";
         userPrompt = `Sumarizuj následující text: "${selectedText}"`;
         break;
       case 'twitter':
@@ -418,7 +418,7 @@ app.post('/api/perplexity', async (req, res) => {
             error: 'Pro vytvoření Twitter postu musíte vybrat text'
           });
         }
-        systemPrompt = "Jsi expert na tvorbu obsahu pro sociální sítě. Vytvoř atraktivní Twitter post v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ```
+        systemPrompt = "Jsi expert na tvorbu obsahu pro sociální sítě. Vytvoř atraktivní Twitter post v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ---. Odpovídej pouze čistým textem.";
         userPrompt = `Přepis následující text do formátu vhodného pro Twitter post (max 280 znaků): "${selectedText}"`;
         break;
       case 'instagram':
@@ -428,7 +428,7 @@ app.post('/api/perplexity', async (req, res) => {
             error: 'Pro vytvoření Instagram postu musíte vybrat text'
           });
         }
-        systemPrompt = "Jsi expert na Instagram marketing. Vytvoř poutavý text pro Instagram post v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ```, ---, ####. Nepoužívej odrážky. Odpovídej pouze čistým textem.";
+        systemPrompt = "Jsi expert na Instagram marketing. Vytvoř poutavý text pro Instagram post v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ---, ####. Nepoužívej odrážky. Odpovídej pouze čistým textem.";
         userPrompt = `Přepis následující text do formátu vhodného pro Instagram post s hashtegy: "${selectedText}"`;
         break;
       case 'expand':
@@ -438,7 +438,7 @@ app.post('/api/perplexity', async (req, res) => {
             error: 'Pro rozšíření textu musíte vybrat text'
           });
         }
-        systemPrompt = "Jsi expert na rozšiřování a vylepšování textů. Rozšiř daný text zachováním původního významu. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ```
+        systemPrompt = "Jsi expert na rozšiřování a vylepšování textů. Rozšiř daný text zachováním původního významu. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ---. Odpovídej pouze čistým textem.";
         userPrompt = `Rozšiř a vylepši následující text: "${selectedText}"`;
         break;
       case 'improve':
@@ -448,7 +448,7 @@ app.post('/api/perplexity', async (req, res) => {
             error: 'Pro vylepšení textu musíte vybrat text'
           });
         }
-        systemPrompt = "Jsi expert na jazykové korekce a stylistické úpravy. Vylepši gramatiku a styl textu. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ```, ---, ####. Nepoužívej odrážky. Odpovídej pouze čistým textem.";
+        systemPrompt = "Jsi expert na jazykové korekce a stylistické úpravy. Vylepši gramatiku a styl textu. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ---, ####. Nepoužívej odrážky. Odpovídej pouze čistým textem.";
         userPrompt = `Vylepši gramatiku a styl následujícího textu: "${selectedText}"`;
         break;
       case 'generate':
@@ -459,7 +459,7 @@ app.post('/api/perplexity', async (req, res) => {
             error: 'Musíte zadat prompt pro generování textu'
           });
         }
-        systemPrompt = "Jsi užitečný asistent. Odpovídej v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ```
+        systemPrompt = "Jsi užitečný asistent. Odpovídej v češtině. NEPOUŽÍVEJ markdown formátování jako #, *, **, _, ---. Odpovídej pouze čistým textem.";
         userPrompt = selectedText ? `${prompt} "${selectedText}"` : prompt;
         break;
       default:
@@ -488,15 +488,15 @@ app.post('/api/perplexity', async (req, res) => {
       throw new Error('API nevrátilo žádné výsledky');
     }
 
-    if (!response.data.choices.message || !response.data.choices.message.content) {
+    if (!response.data.choices[0].message || !response.data.choices[0].message.content) {
       throw new Error('API vrátilo prázdnou odpověď');
     }
 
-    let result = response.data.choices.message.content.trim();
+    let result = response.data.choices[0].message.content.trim();
     
     // OPRAVA: Vyčisti výsledek od markdown značek
     result = result
-      .replace(/[#*_`~$$$$]/g, '')  // Odstraň markdown znaky
+      .replace(/[#*_`~\[\]]/g, '')  // Odstraň markdown znaky
       .replace(/^[-\s]+|[-\s]+$/g, '')  // Odstraň pomlčky na začátku/konci
       .replace(/\*\*/g, '')  // Odstraň tučné značky
       .replace(/###/g, '')  // Odstraň nadpisy
