@@ -10,12 +10,53 @@
 </head>
 <body>
     <div class="app-layout">
-        <!-- Sidebar inspirovaný Ulysses -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>Dokumenty</h2>
-                <div class="sidebar-actions">
-                    <button id="newBtn" class="btn-icon" title="Nový dokument">+</button>
+        <!-- Left Sidebar - Library -->
+        <aside class="library-sidebar">
+            <div class="library-header">
+                <h3>Library</h3>
+            </div>
+            
+            <div class="library-section">
+                <div class="section-item active">
+                    <span class="icon">📄</span>
+                    <span>All</span>
+                </div>
+                <div class="section-item">
+                    <span class="icon">🕒</span>
+                    <span>Last 7 Days</span>
+                </div>
+                <div class="section-item">
+                    <span class="icon">🗑️</span>
+                    <span>Trash</span>
+                </div>
+            </div>
+
+            <div class="library-section">
+                <h4>Projects</h4>
+                <div class="section-item">
+                    <span class="icon">➕</span>
+                    <span>New Project...</span>
+                </div>
+            </div>
+
+            <div class="library-section">
+                <h4>iCloud</h4>
+                <div class="section-item">
+                    <span class="icon">📥</span>
+                    <span>Inbox</span>
+                </div>
+                <div class="section-item expanded">
+                    <span class="icon">📚</span>
+                    <span>AI Editor</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Middle Sidebar - Articles List -->
+        <aside class="articles-sidebar">
+            <div class="articles-header">
+                <div class="header-actions">
+                    <button id="newBtn" class="btn-icon" title="Nový článek">+</button>
                 </div>
             </div>
             
@@ -27,11 +68,11 @@
             </div>
         </aside>
 
-        <!-- Main content area -->
+        <!-- Main Content Area -->
         <main class="main-content">
             <div class="editor-header">
                 <div class="editor-title">
-                    <h1>AI Textový Editor</h1>
+                    <span class="word-count">0 Words</span>
                 </div>
                 <div class="editor-actions">
                     <button id="saveBtn" class="btn-primary">Uložit</button>
@@ -61,7 +102,7 @@
             </div>
             <div class="menu-item" data-action="instagram" data-needs-selection="true">
                 <span class="icon">📸</span>
-                <span>Instagram post</span>
+                <span>Instagram carousel</span>
             </div>
             <div class="menu-item" data-action="expand" data-needs-selection="true">
                 <span class="icon">📈</span>
