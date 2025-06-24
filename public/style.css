@@ -774,3 +774,51 @@ body {
         font-size: 15px;
     }
 }
+/* OPRAVA: Zajisti klikatelnost všech tlačítek */
+.btn-primary, .btn-secondary, .btn-icon, .toolbar-btn, .section-item, .menu-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+.btn-primary:disabled, .btn-secondary:disabled, .btn-icon:disabled {
+    pointer-events: none !important;
+    opacity: 0.5;
+}
+
+/* OPRAVA: Context menu musí být nad vším */
+.context-menu {
+    pointer-events: auto !important;
+    z-index: 9999 !important;
+    position: fixed !important;
+}
+
+.context-menu.hidden {
+    display: none !important;
+    pointer-events: none !important;
+}
+
+/* OPRAVA: Menu items musí být klikatelné */
+.menu-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+.menu-item.disabled {
+    pointer-events: auto !important; /* Změněno z none na auto */
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+
+/* OPRAVA: Section items musí být klikatelné */
+.section-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+/* OPRAVA: Zajisti, že editor nezablokuje context menu */
+#editor {
+    user-select: text !important;
+}
