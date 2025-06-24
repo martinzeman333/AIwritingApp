@@ -140,27 +140,6 @@ class AITextEditor {
     constructor() {
         console.log('🚀 AITextEditor constructor called');
         
-        // Najdi elementy
-        this.findElements();
-        
-        // Inicializuj proměnné
-        this.initializeProperties();
-        
-        // Nastav event listenery s delay
-        setTimeout(() => {
-            this.setupAllEventListeners();
-            this.loadInitialData();
-        }, 300);
-        
-        // Globální reference pro debug
-        globalEditor = this;
-        
-        console.log('✅ AITextEditor initialized successfully');
-    }
-
-    findElements() {
-        console.log('🔍 Finding DOM elements...');
-        
         this.editor = document.getElementById('editor');
         this.contextMenu = document.getElementById('contextMenu');
         this.promptModal = document.getElementById('promptModal');
@@ -171,311 +150,46 @@ class AITextEditor {
         this.articlesList = document.getElementById('articlesList');
         this.wordCountElement = document.querySelector('.word-count');
         this.instagramSidebar = document.getElementById('instagramSidebar');
-        
-        console.log('📊 Elements found:', {
-            editor: !!this.editor,
-            contextMenu: !!this.contextMenu,
-            promptModal: !!this.promptModal,
-            saveModal: !!this.saveModal,
-            loadingOverlay: !!this.loadingOverlay,
-            wordCountElement: !!this.wordCountElement
-        });
-        
-        if (!this.editor) {
-            console.error('❌ Critical: Editor element not found!');
-            return false;
-        }
-        
-        return true;
-    }
-
-    initializeProperties() {
         this.imageGenerator = new InstagramImageGenerator();
+        
         this.selectedText = '';
         this.selectionRange = null;
         this.lastCursorPosition = null;
         this.currentArticleId = null;
         this.currentInstagramPost = null;
         this.currentFilter = 'all';
-    }
-
-    setupAllEventListeners() {
-        console.log('🎯 Setting up all event listeners...');
         
-        // OPRAVA: Context menu s více metodami
-        this.setupContextMenu();
+        // Globální reference pro debug
+        globalEditor = this;
         
-        // OPRAVA: Header buttons
-        this.setupHeaderButtons();
-        
-        // OPRAVA: Library filters
-        this.setupLibraryFilters();
-        
-        // OPRAVA: Menu items - KLÍČOVÁ OPRAVA
-        this.setupMenuItems();
-        
-        // Modal buttons
-        this.setupModalButtons();
-        
-        // Instagram sidebar
-        this.setupInstagramSidebar();
-        
-        // Formatting toolbar
+        this.initializeEventListeners();
         this.setupFormattingToolbar();
+        this.loadArticlesList();
+        this.updateWordCount();
         
-        // Editor events
-        this.setupEditorEvents();
-        
-        console.log('✅ All event listeners set up');
+        console.log('✅ AITextEditor initialized successfully');
     }
 
-    setupContextMenu() {
-        console.log('🖱️ Setting up context menu...');
-        
-        if (!this.editor || !this.contextMenu) {
-            console.error('❌ Editor or context menu not found');
-            return;
+    generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    updateWordCount() {
+        if (this.wordCountElement && this.editor) {
+            const text = this.editor.textContent.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            this.wordCountElement.textContent = `${words} Words`;
         }
-
-        // OPRAVA: Zabráníme výchozímu context menu na celé stránce
-        document.addEventListener('contextmenu', (e) => {
-            if (this.editor && this.editor.contains(e.target)) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🖱️ Context menu prevented and custom triggered');
-                this.showContextMenu(e);
-            }
-        });
-
-        // OPRAVA: Backup metoda pro mousedown
-        this.editor.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { // Pravé tlačítko
-                console.log('🖱️ Right mouse button detected');
-                e.preventDefault();
-                e.stopPropagation();
-                // Malé zpoždění pro lepší handling
-                setTimeout(() => {
-                    this.showContextMenu(e);
-                }, 50);
-            }
-        });
-
-        // Skrytí menu při kliknutí jinam
-        document.addEventListener('click', (e) => {
-            if (this.contextMenu && !this.contextMenu.contains(e.target)) {
-                this.hideContextMenu();
-            }
-        });
-
-        console.log('✅ Context menu setup complete');
-    }
-
-    setupHeaderButtons() {
-        console.log('🔘 Setting up header buttons...');
-        
-        const buttons = [
-            { id: 'saveBtn', handler: () => this.showSaveModal(), name: 'Save' },
-            { id: 'newBtn', handler: () => this.newArticle(), name: 'New' },
-            { id: 'clearBtn', handler: () => this.clearEditor(), name: 'Clear' }
-        ];
-
-        buttons.forEach(({ id, handler, name }) => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                console.log(`✅ Setting up ${name} button`);
-                
-                // OPRAVA: Odstraň všechny staré event listenery pomocí klonování
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                // Přidej nový event listener
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log(`🔘 ${name} button clicked`);
-                    handler();
-                });
-                
-                // OPRAVA: Ujisti se, že tlačítko je klikatelné
-                newBtn.disabled = false;
-                newBtn.style.pointerEvents = 'auto';
-                newBtn.style.cursor = 'pointer';
-                
-            } else {
-                console.warn(`⚠️ Button ${id} not found`);
-            }
-        });
-    }
-
-    setupLibraryFilters() {
-        console.log('📁 Setting up library filters...');
-        
-        setTimeout(() => {
-            const filterItems = document.querySelectorAll('.section-item[data-filter]');
-            console.log(`📁 Found ${filterItems.length} filter items`);
-            
-            filterItems.forEach((item, index) => {
-                const filter = item.dataset.filter;
-                console.log(`📁 Setting up filter ${index}: ${filter}`);
-                
-                // OPRAVA: Klonuj element pro odstranění starých listenerů
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
-                
-                newItem.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log(`📁 Filter clicked: ${filter}`);
-                    this.handleFilterClick(e);
-                });
-                
-                // Ujisti se, že je klikatelný
-                newItem.style.pointerEvents = 'auto';
-                newItem.style.cursor = 'pointer';
-            });
-        }, 100);
-    }
-
-    setupMenuItems() {
-        console.log('📋 Setting up menu items...');
-        
-        // OPRAVA: Počkáme déle a použijeme robustnější přístup
-        setTimeout(() => {
-            const menuItems = document.querySelectorAll('.menu-item');
-            console.log(`📋 Found ${menuItems.length} menu items`);
-            
-            // OPRAVA: Iterujeme přes NodeList správně
-            menuItems.forEach((item, index) => {
-                const action = item.dataset.action;
-                console.log(`📋 Setting up menu item ${index}: ${action}`);
-                
-                // OPRAVA: Odstraníme všechny staré event listenery
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
-                
-                // OPRAVA: Přidáme event listener s bind kontextu
-                const clickHandler = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log(`📋 Menu item clicked: ${action}`);
-                    this.handleMenuClick(e);
-                };
-                
-                newItem.addEventListener('click', clickHandler);
-                
-                // OPRAVA: Ujisti se, že je klikatelný
-                newItem.style.pointerEvents = 'auto';
-                newItem.style.cursor = 'pointer';
-                newItem.style.userSelect = 'none';
-                
-                // OPRAVA: Přidej visual feedback
-                newItem.addEventListener('mouseenter', () => {
-                    console.log(`🖱️ Hovering over menu item: ${action}`);
-                });
-            });
-            
-            console.log('✅ Menu items setup complete');
-        }, 500); // Delší delay
-    }
-
-    setupModalButtons() {
-        console.log('🔘 Setting up modal buttons...');
-        
-        const modalButtons = [
-            { id: 'submitPrompt', handler: () => this.submitPrompt() },
-            { id: 'cancelPrompt', handler: () => this.hideModal() },
-            { id: 'confirmSave', handler: () => this.confirmSaveArticle() },
-            { id: 'cancelSave', handler: () => this.hideSaveModal() }
-        ];
-
-        modalButtons.forEach(({ id, handler }) => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                // Klonuj pro odstranění starých listenerů
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log(`🔘 Modal button ${id} clicked`);
-                    handler();
-                });
-                
-                newBtn.disabled = false;
-                newBtn.style.pointerEvents = 'auto';
-                newBtn.style.cursor = 'pointer';
-            }
-        });
-    }
-
-    setupInstagramSidebar() {
-        // Instagram sidebar setup
-        const closeBtn = document.getElementById('closeInstagramSidebar');
-        if (closeBtn) {
-            const newCloseBtn = closeBtn.cloneNode(true);
-            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-            
-            newCloseBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.hideInstagramSidebar();
-            });
-        }
-
-        // Ostatní Instagram tlačítka
-        const instagramButtons = [
-            { id: 'regenerateInstagramImage', handler: () => this.regenerateInstagramImage() },
-            { id: 'saveInstagramPost', handler: () => this.saveInstagramPost() },
-            { id: 'downloadInstagramSlides', handler: () => this.downloadInstagramSlides() }
-        ];
-
-        instagramButtons.forEach(({ id, handler }) => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    handler();
-                });
-            }
-        });
     }
 
     setupFormattingToolbar() {
-        console.log('🎨 Setting up formatting toolbar...');
+        console.log('Setting up formatting toolbar...');
         
-        // Formatting toolbar buttons
-        const toolbarButtons = [
-            { id: 'boldBtn', command: 'bold' },
-            { id: 'italicBtn', command: 'italic' },
-            { id: 'underlineBtn', command: 'underline' },
-            { id: 'alignLeftBtn', command: 'justifyLeft' },
-            { id: 'alignCenterBtn', command: 'justifyCenter' },
-            { id: 'alignRightBtn', command: 'justifyRight' },
-            { id: 'bulletListBtn', command: 'insertUnorderedList' },
-            { id: 'numberedListBtn', command: 'insertOrderedList' },
-            { id: 'clearFormatBtn', command: 'removeFormat' }
-        ];
-
-        toolbarButtons.forEach(({ id, command }) => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log(`🎨 Toolbar button ${id} clicked`);
-                    document.execCommand(command, false, null);
-                    this.updateToolbarState();
-                    this.editor.focus();
-                });
-            }
-        });
-
-        // Font selectors
+        // Font family
         const fontFamily = document.getElementById('fontFamily');
         if (fontFamily) {
             fontFamily.addEventListener('change', (e) => {
@@ -484,6 +198,7 @@ class AITextEditor {
             });
         }
 
+        // Font size
         const fontSize = document.getElementById('fontSize');
         if (fontSize) {
             fontSize.addEventListener('change', (e) => {
@@ -504,24 +219,240 @@ class AITextEditor {
                 this.editor.focus();
             });
         }
-    }
 
-    setupEditorEvents() {
-        if (this.editor) {
-            this.editor.addEventListener('input', () => {
-                this.autoSave();
-                this.updateWordCount();
-            });
-
-            this.editor.addEventListener('mouseup', () => this.updateToolbarState());
-            this.editor.addEventListener('keyup', () => {
+        // Bold
+        const boldBtn = document.getElementById('boldBtn');
+        if (boldBtn) {
+            boldBtn.addEventListener('click', () => {
+                document.execCommand('bold', false, null);
                 this.updateToolbarState();
-                this.saveCursorPosition();
+                this.editor.focus();
             });
-            this.editor.addEventListener('click', () => this.saveCursorPosition());
         }
 
+        // Italic
+        const italicBtn = document.getElementById('italicBtn');
+        if (italicBtn) {
+            italicBtn.addEventListener('click', () => {
+                document.execCommand('italic', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Underline
+        const underlineBtn = document.getElementById('underlineBtn');
+        if (underlineBtn) {
+            underlineBtn.addEventListener('click', () => {
+                document.execCommand('underline', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Align Left
+        const alignLeftBtn = document.getElementById('alignLeftBtn');
+        if (alignLeftBtn) {
+            alignLeftBtn.addEventListener('click', () => {
+                document.execCommand('justifyLeft', false, null);
+                this.updateAlignmentState();
+                this.editor.focus();
+            });
+        }
+
+        // Align Center
+        const alignCenterBtn = document.getElementById('alignCenterBtn');
+        if (alignCenterBtn) {
+            alignCenterBtn.addEventListener('click', () => {
+                document.execCommand('justifyCenter', false, null);
+                this.updateAlignmentState();
+                this.editor.focus();
+            });
+        }
+
+        // Align Right
+        const alignRightBtn = document.getElementById('alignRightBtn');
+        if (alignRightBtn) {
+            alignRightBtn.addEventListener('click', () => {
+                document.execCommand('justifyRight', false, null);
+                this.updateAlignmentState();
+                this.editor.focus();
+            });
+        }
+
+        // Text Color
+        const textColor = document.getElementById('textColor');
+        if (textColor) {
+            textColor.addEventListener('change', (e) => {
+                document.execCommand('foreColor', false, e.target.value);
+                this.editor.focus();
+            });
+        }
+
+        // Background Color
+        const bgColor = document.getElementById('bgColor');
+        if (bgColor) {
+            bgColor.addEventListener('change', (e) => {
+                document.execCommand('backColor', false, e.target.value);
+                this.editor.focus();
+            });
+        }
+
+        // Bullet List
+        const bulletListBtn = document.getElementById('bulletListBtn');
+        if (bulletListBtn) {
+            bulletListBtn.addEventListener('click', () => {
+                document.execCommand('insertUnorderedList', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Numbered List
+        const numberedListBtn = document.getElementById('numberedListBtn');
+        if (numberedListBtn) {
+            numberedListBtn.addEventListener('click', () => {
+                document.execCommand('insertOrderedList', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Clear Format
+        const clearFormatBtn = document.getElementById('clearFormatBtn');
+        if (clearFormatBtn) {
+            clearFormatBtn.addEventListener('click', () => {
+                document.execCommand('removeFormat', false, null);
+                this.updateToolbarState();
+                this.editor.focus();
+            });
+        }
+
+        // Update toolbar state on selection change
+        this.editor.addEventListener('mouseup', () => this.updateToolbarState());
+        this.editor.addEventListener('keyup', () => this.updateToolbarState());
+
+        // Keyboard shortcuts
+        this.editor.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'b':
+                        e.preventDefault();
+                        document.execCommand('bold', false, null);
+                        this.updateToolbarState();
+                        break;
+                    case 'i':
+                        e.preventDefault();
+                        document.execCommand('italic', false, null);
+                        this.updateToolbarState();
+                        break;
+                    case 'u':
+                        e.preventDefault();
+                        document.execCommand('underline', false, null);
+                        this.updateToolbarState();
+                        break;
+                }
+            }
+        });
+
+        console.log('Formatting toolbar setup complete');
+    }
+
+    updateToolbarState() {
+        // Update button states based on current selection
+        const boldBtn = document.getElementById('boldBtn');
+        const italicBtn = document.getElementById('italicBtn');
+        const underlineBtn = document.getElementById('underlineBtn');
+        const bulletListBtn = document.getElementById('bulletListBtn');
+        const numberedListBtn = document.getElementById('numberedListBtn');
+
+        if (boldBtn) {
+            boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+        }
+        if (italicBtn) {
+            italicBtn.classList.toggle('active', document.queryCommandState('italic'));
+        }
+        if (underlineBtn) {
+            underlineBtn.classList.toggle('active', document.queryCommandState('underline'));
+        }
+        if (bulletListBtn) {
+            bulletListBtn.classList.toggle('active', document.queryCommandState('insertUnorderedList'));
+        }
+        if (numberedListBtn) {
+            numberedListBtn.classList.toggle('active', document.queryCommandState('insertOrderedList'));
+        }
+
+        this.updateAlignmentState();
+    }
+
+    updateAlignmentState() {
+        const alignLeftBtn = document.getElementById('alignLeftBtn');
+        const alignCenterBtn = document.getElementById('alignCenterBtn');
+        const alignRightBtn = document.getElementById('alignRightBtn');
+
+        if (alignLeftBtn) alignLeftBtn.classList.remove('active');
+        if (alignCenterBtn) alignCenterBtn.classList.remove('active');
+        if (alignRightBtn) alignRightBtn.classList.remove('active');
+
+        if (document.queryCommandState('justifyLeft') && alignLeftBtn) {
+            alignLeftBtn.classList.add('active');
+        } else if (document.queryCommandState('justifyCenter') && alignCenterBtn) {
+            alignCenterBtn.classList.add('active');
+        } else if (document.queryCommandState('justifyRight') && alignRightBtn) {
+            alignRightBtn.classList.add('active');
+        }
+    }
+
+    initializeEventListeners() {
+        console.log('Initializing event listeners...');
+        
+        // Context menu - OPRAVA
+        this.editor.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            console.log('Context menu triggered');
+            this.showContextMenu(e);
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!this.contextMenu.contains(e.target)) {
+                this.hideContextMenu();
+            }
+        });
+        
+        // Menu items - OPRAVA
+        this.setupMenuItems();
+        
+        // Library sidebar filters
+        this.setupLibraryFilters();
+
+        // New project button
+        const newProjectBtn = document.getElementById('newProjectBtn');
+        if (newProjectBtn) {
+            newProjectBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('New project clicked');
+                this.createNewProject();
+            });
+        }
+
+        // Header buttons - OPRAVA
+        this.setupHeaderButtons();
+        
+        // Modal buttons
+        this.setupModalButtons();
+
+        // Instagram sidebar - OPRAVA
+        this.setupInstagramSidebar();
+
+        // Editor events
+        this.editor.addEventListener('input', () => {
+            this.autoSave();
+            this.updateWordCount();
+        });
+
         document.addEventListener('selectionchange', () => this.trackSelection());
+        this.editor.addEventListener('click', () => this.saveCursorPosition());
+        this.editor.addEventListener('keyup', () => this.saveCursorPosition());
 
         if (this.articleTitle) {
             this.articleTitle.addEventListener('keypress', (e) => {
@@ -530,127 +461,188 @@ class AITextEditor {
                 }
             });
         }
+        
+        console.log('Event listeners initialized');
     }
 
-    loadInitialData() {
-        this.loadArticlesList();
-        this.updateWordCount();
-    }
-
-    // OPRAVA: Lepší showContextMenu
-    showContextMenu(e) {
-        console.log('📋 Showing context menu at:', e.pageX, e.pageY);
-        
-        if (!this.contextMenu) {
-            console.error('❌ Context menu element not found');
-            return;
-        }
-
-        this.saveCursorPosition();
-        
-        const selection = window.getSelection();
-        this.selectedText = selection.toString().trim();
-        
-        console.log('📋 Selected text:', this.selectedText ? `"${this.selectedText.substring(0, 50)}..."` : 'none');
-        
-        // OPRAVA: Update menu items based on selection
+    setupMenuItems() {
         setTimeout(() => {
             const menuItems = document.querySelectorAll('.menu-item');
-            menuItems.forEach(item => {
-                const needsSelection = item.hasAttribute('data-needs-selection');
-                if (needsSelection) {
-                    item.classList.toggle('disabled', !this.selectedText);
+            console.log('Setting up menu items:', menuItems.length);
+            
+            menuItems.forEach((item, index) => {
+                console.log(`Setting up menu item ${index}:`, item.dataset.action);
+                
+                // OPRAVA: Odstraň staré event listenery
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
+                newItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Menu item clicked:', e.currentTarget.dataset.action);
+                    this.handleMenuClick(e);
+                });
+            });
+        }, 100);
+    }
+
+    setupLibraryFilters() {
+        setTimeout(() => {
+            const filterItems = document.querySelectorAll('.section-item[data-filter]');
+            console.log('Setting up library filters:', filterItems.length);
+            
+            filterItems.forEach((item, index) => {
+                console.log(`Setting up filter ${index}:`, item.dataset.filter);
+                
+                // OPRAVA: Klonuj element
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
+                newItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Filter clicked:', e.currentTarget.dataset.filter);
+                    this.handleFilterClick(e);
+                });
+            });
+        }, 100);
+    }
+
+    setupHeaderButtons() {
+        const saveBtn = document.getElementById('saveBtn');
+        const newBtn = document.getElementById('newBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        if (saveBtn) {
+            // OPRAVA: Klonuj tlačítko
+            const newSaveBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+            
+            newSaveBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Save button clicked');
+                this.showSaveModal();
+            });
+        }
+        
+        if (newBtn) {
+            const newNewBtn = newBtn.cloneNode(true);
+            newBtn.parentNode.replaceChild(newNewBtn, newBtn);
+            
+            newNewBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('New button clicked');
+                this.newArticle();
+            });
+        }
+        
+        if (clearBtn) {
+            const newClearBtn = clearBtn.cloneNode(true);
+            clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
+            
+            newClearBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Clear button clicked');
+                this.clearEditor();
+            });
+        }
+    }
+
+    setupModalButtons() {
+        const submitPrompt = document.getElementById('submitPrompt');
+        const cancelPrompt = document.getElementById('cancelPrompt');
+        const confirmSave = document.getElementById('confirmSave');
+        const cancelSave = document.getElementById('cancelSave');
+        
+        if (submitPrompt) {
+            submitPrompt.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.submitPrompt();
+            });
+        }
+        if (cancelPrompt) {
+            cancelPrompt.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.hideModal();
+            });
+        }
+        if (confirmSave) {
+            confirmSave.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.confirmSaveArticle();
+            });
+        }
+        if (cancelSave) {
+            cancelSave.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.hideSaveModal();
+            });
+        }
+    }
+
+    setupInstagramSidebar() {
+        const closeBtn = document.getElementById('closeInstagramSidebar');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.hideInstagramSidebar();
+            });
+        }
+
+        const instagramText = document.getElementById('instagramText');
+        if (instagramText) {
+            instagramText.addEventListener('input', (e) => {
+                if (this.currentInstagramPost) {
+                    this.currentInstagramPost.text = e.target.value;
+                    this.updateInstagramPreview();
                 }
             });
-        }, 10);
-
-        // Position menu
-        const x = Math.min(e.pageX, window.innerWidth - 220); // Prevent overflow
-        const y = Math.min(e.pageY, window.innerHeight - 200);
-        
-        this.contextMenu.style.left = x + 'px';
-        this.contextMenu.style.top = y + 'px';
-        this.contextMenu.style.display = 'block';
-        this.contextMenu.style.zIndex = '9999';
-        this.contextMenu.classList.remove('hidden');
-        
-        console.log('✅ Context menu should be visible now');
-    }
-
-    hideContextMenu() {
-        if (this.contextMenu) {
-            this.contextMenu.classList.add('hidden');
-            this.contextMenu.style.display = 'none';
-        }
-    }
-
-    handleMenuClick(e) {
-        console.log('📋 Menu click handler called');
-        
-        const target = e.currentTarget || e.target;
-        const action = target.dataset.action;
-        
-        console.log('📋 Action:', action);
-        
-        if (target.classList.contains('disabled')) {
-            console.log('📋 Menu item is disabled');
-            return;
         }
 
-        this.hideContextMenu();
+        const instagramHashtags = document.getElementById('instagramHashtags');
+        if (instagramHashtags) {
+            instagramHashtags.addEventListener('input', (e) => {
+                if (this.currentInstagramPost) {
+                    this.currentInstagramPost.hashtags = e.target.value;
+                }
+            });
+        }
 
-        switch (action) {
-            case 'generate':
-                console.log('📋 Triggering generate action');
-                this.showPromptModal();
-                break;
-            case 'instagram':
-                console.log('📋 Triggering Instagram action');
-                this.processInstagramImage();
-                break;
-            case 'summarize':
-                console.log('📋 Triggering summarize action');
-                this.processAIAction('summarize');
-                break;
-            case 'twitter':
-                console.log('📋 Triggering Twitter action');
-                this.processAIAction('twitter');
-                break;
-            case 'expand':
-                console.log('📋 Triggering expand action');
-                this.processAIAction('expand');
-                break;
-            case 'improve':
-                console.log('📋 Triggering improve action');
-                this.processAIAction('improve');
-                break;
-            default:
-                console.log('📋 Triggering default action');
-                this.processAIAction(action);
-                break;
+        const regenerateBtn = document.getElementById('regenerateInstagramImage');
+        if (regenerateBtn) {
+            regenerateBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.regenerateInstagramImage();
+            });
+        }
+
+        const saveBtn = document.getElementById('saveInstagramPost');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.saveInstagramPost();
+            });
+        }
+
+        const downloadBtn = document.getElementById('downloadInstagramSlides');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.downloadInstagramSlides();
+            });
         }
     }
 
     handleFilterClick(e) {
-        console.log('📁 Filter click handler called');
+        console.log('Filter click handler called:', e.currentTarget.dataset.filter);
         
-        const target = e.currentTarget || e.target;
-        const filter = target.dataset.filter;
-        
-        console.log('📁 Filter:', filter);
-        
-        // Remove active from all filter items
         document.querySelectorAll('.section-item[data-filter]').forEach(item => {
             item.classList.remove('active');
         });
         
-        // Add active to clicked item
-        target.classList.add('active');
-        
-        // Update current filter
-        this.currentFilter = filter;
-        
-        // Reload articles list with filter
+        e.currentTarget.classList.add('active');
+        this.currentFilter = e.currentTarget.dataset.filter;
         this.loadArticlesList();
         
         const filterNames = {
@@ -662,143 +654,304 @@ class AITextEditor {
         this.showNotification(`Filtr: ${filterNames[this.currentFilter]}`);
     }
 
-    // Utility methods
-    generateUUID() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0;
-            const v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
+    createNewProject() {
+        const projectName = prompt('Zadejte název nového projektu:');
+        if (projectName && projectName.trim()) {
+            this.showNotification(`Projekt "${projectName}" vytvořen`);
+        }
+    }
+
+    showInstagramSidebar() {
+        console.log('📸 Showing Instagram sidebar');
+        if (this.instagramSidebar) {
+            this.instagramSidebar.classList.remove('hidden');
+            console.log('✅ Instagram sidebar should be visible now');
+        } else {
+            console.error('❌ Instagram sidebar element not found');
+        }
+    }
+
+    hideInstagramSidebar() {
+        console.log('📸 Hide Instagram sidebar');
+        if (this.instagramSidebar) {
+            this.instagramSidebar.classList.add('hidden');
+        }
+        this.currentInstagramPost = null;
+    }
+
+    async updateInstagramPreview() {
+        if (!this.currentInstagramPost) return;
+
+        const canvas1 = document.getElementById('previewCanvas1');
+        const canvas2 = document.getElementById('previewCanvas2');
+        
+        if (!canvas1 || !canvas2) return;
+
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+
+        await this.createPreviewSlide1(ctx1);
+        this.createPreviewSlide2(ctx2);
+    }
+
+    async createPreviewSlide1(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        try {
+            if (this.currentInstagramPost.backgroundImageUrl) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        this.imageGenerator.createGradientBackground(ctx);
+                        resolve();
+                    };
+                    img.src = this.currentInstagramPost.backgroundImageUrl;
+                });
+            } else {
+                this.imageGenerator.createGradientBackground(ctx);
+            }
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            ctx.font = 'bold 22px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+
+            const maxWidth = ctx.canvas.width * 0.85;
+            const lines = this.imageGenerator.wrapText(ctx, this.currentInstagramPost.title, maxWidth);
+            const lineHeight = 28;
+            const startY = ctx.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+
+            lines.forEach((line, index) => {
+                const y = startY + index * lineHeight;
+                ctx.strokeText(line, ctx.canvas.width / 2, y);
+                ctx.fillText(line, ctx.canvas.width / 2, y);
+            });
+
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+        } catch (error) {
+            console.error('Error creating preview slide 1:', error);
+        }
+    }
+
+    createPreviewSlide2(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        this.imageGenerator.createAbstractBackground(ctx);
+        
+        ctx.font = '13px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        const maxWidth = ctx.canvas.width * 0.85;
+        const lines = this.imageGenerator.wrapText(ctx, this.currentInstagramPost.text, maxWidth);
+        const lineHeight = 18;
+        const startY = ctx.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+
+        lines.forEach((line, index) => {
+            const y = startY + index * lineHeight;
+            ctx.fillText(line, ctx.canvas.width / 2, y);
+        });
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+    }
+
+    async regenerateInstagramImage() {
+        if (!this.currentInstagramPost) return;
+
+        const newPrompt = document.getElementById('instagramImagePrompt').value;
+        if (!newPrompt) return;
+
+        this.showLoading();
+        document.getElementById('loadingText').textContent = 'Regeneruji realistickou fotografii...';
+
+        try {
+            const response = await fetch('/api/generate-image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    prompt: `${newPrompt}, realistic photography, high quality, professional photo, photorealistic, detailed, suitable for Instagram post, natural lighting`
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.success && data.imageUrl) {
+                this.currentInstagramPost.backgroundImageUrl = data.imageUrl;
+                this.currentInstagramPost.imageDescription = newPrompt;
+                await this.updateInstagramPreview();
+                this.showNotification(`Realistická fotografie regenerována (${data.generationMethod})`);
+            } else {
+                this.showError('Chyba při regeneraci obrázku');
+            }
+        } catch (error) {
+            this.showError('Chyba při regeneraci: ' + error.message);
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    saveInstagramPost() {
+        if (!this.currentInstagramPost) return;
+
+        this.currentInstagramPost.text = document.getElementById('instagramText').value;
+        this.currentInstagramPost.hashtags = document.getElementById('instagramHashtags').value;
+        this.currentInstagramPost.imageDescription = document.getElementById('instagramImagePrompt').value;
+
+        const instagramPosts = this.getSavedInstagramPosts();
+        
+        if (this.currentInstagramPost.id) {
+            const index = instagramPosts.findIndex(p => p.id === this.currentInstagramPost.id);
+            if (index !== -1) {
+                instagramPosts[index] = this.currentInstagramPost;
+            }
+        } else {
+            this.currentInstagramPost.id = this.generateUUID();
+            this.currentInstagramPost.timestamp = new Date().toISOString();
+            instagramPosts.unshift(this.currentInstagramPost);
+        }
+
+        localStorage.setItem('instagramPosts', JSON.stringify(instagramPosts));
+        this.showNotification('Instagram post uložen do historie');
+    }
+
+    getSavedInstagramPosts() {
+        const posts = localStorage.getItem('instagramPosts');
+        return posts ? JSON.parse(posts) : [];
+    }
+
+    downloadInstagramSlides() {
+        if (!this.currentInstagramPost) return;
+
+        const canvas1 = document.createElement('canvas');
+        const canvas2 = document.createElement('canvas');
+        
+        canvas1.width = 1080;
+        canvas1.height = 1350;
+        canvas2.width = 1080;
+        canvas2.height = 1350;
+        
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+        
+        this.createFullSizeSlide1(ctx1).then(() => {
+            this.createFullSizeSlide2(ctx2);
+            
+            const link1 = document.createElement('a');
+            link1.download = 'instagram-slide-1.png';
+            link1.href = canvas1.toDataURL('image/png');
+            link1.click();
+
+            setTimeout(() => {
+                const link2 = document.createElement('a');
+                link2.download = 'instagram-slide-2.png';
+                link2.href = canvas2.toDataURL('image/png');
+                link2.click();
+                
+                if (this.currentInstagramPost.hashtags) {
+                    navigator.clipboard.writeText(this.currentInstagramPost.hashtags).then(() => {
+                        this.showNotification('Slides staženy a hashtags zkopírovány!');
+                    });
+                } else {
+                    this.showNotification('Slides staženy!');
+                }
+            }, 500);
         });
     }
 
-    updateWordCount() {
-        if (this.wordCountElement && this.editor) {
-            const text = this.editor.textContent.trim();
-            const words = text ? text.split(/\s+/).length : 0;
-            this.wordCountElement.textContent = `${words} Words`;
-        }
-    }
-
-    updateToolbarState() {
-        const buttons = [
-            { id: 'boldBtn', command: 'bold' },
-            { id: 'italicBtn', command: 'italic' },
-            { id: 'underlineBtn', command: 'underline' },
-            { id: 'bulletListBtn', command: 'insertUnorderedList' },
-            { id: 'numberedListBtn', command: 'insertOrderedList' }
-        ];
-
-        buttons.forEach(({ id, command }) => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                btn.classList.toggle('active', document.queryCommandState(command));
-            }
-        });
-    }
-
-    showNotification(message) {
-        console.log('📢 Notification:', message);
+    async createFullSizeSlide1(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        const notification = document.createElement('div');
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #007aff;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            z-index: 4000;
-            font-weight: 500;
-            font-size: 13px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        `;
+        try {
+            if (this.currentInstagramPost.backgroundImageUrl) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        this.imageGenerator.createGradientBackground(ctx);
+                        resolve();
+                    };
+                    img.src = this.currentInstagramPost.backgroundImageUrl;
+                });
+            } else {
+                this.imageGenerator.createGradientBackground(ctx);
+            }
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            this.imageGenerator.addTitleToSlide(ctx, this.currentInstagramPost.title);
+            
+        } catch (error) {
+            console.error('Error creating full-size slide 1:', error);
+            this.imageGenerator.createGradientBackground(ctx);
+            this.imageGenerator.addTitleToSlide(ctx, this.currentInstagramPost.title);
+        }
+    }
+
+    createFullSizeSlide2(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        this.imageGenerator.createAbstractBackground(ctx);
+        this.imageGenerator.addTextToSlide(ctx, this.currentInstagramPost.text);
+    }
+
+    showSaveModal() {
+        const content = this.editor.innerHTML.trim();
+        if (!content) {
+            this.showError('Nelze uložit prázdný článek');
+            return;
+        }
+
+        const textContent = this.editor.textContent.trim();
+        const suggestedTitle = textContent.substring(0, 50) + (textContent.length > 50 ? '...' : '');
+        this.articleTitle.value = suggestedTitle;
         
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
+        this.saveModal.classList.remove('hidden');
+        this.articleTitle.focus();
+        this.articleTitle.select();
     }
 
-    showError(message) {
-        console.error('❌ Error:', message);
-        alert('Chyba: ' + message);
-    }
-
-    // Modal methods
-    showSaveModal() { 
-        console.log('💾 Show save modal');
-        if (this.saveModal) {
-            this.saveModal.classList.remove('hidden');
-            if (this.articleTitle) {
-                const textContent = this.editor.textContent.trim();
-                const suggestedTitle = textContent.substring(0, 50) + (textContent.length > 50 ? '...' : '');
-                this.articleTitle.value = suggestedTitle;
-                this.articleTitle.focus();
-                this.articleTitle.select();
-            }
-        }
-    }
-    
-    hideSaveModal() { 
-        console.log('💾 Hide save modal');
-        if (this.saveModal) {
-            this.saveModal.classList.add('hidden');
-            if (this.articleTitle) {
-                this.articleTitle.value = '';
-            }
-        }
-    }
-    
-    showPromptModal() { 
-        console.log('✨ Show prompt modal');
-        if (this.promptModal) {
-            this.promptModal.classList.remove('hidden');
-            if (this.promptInput) {
-                this.promptInput.focus();
-            }
-        }
-    }
-    
-    hideModal() { 
-        console.log('❌ Hide modal');
-        if (this.promptModal) {
-            this.promptModal.classList.add('hidden');
-            if (this.promptInput) {
-                this.promptInput.value = '';
-            }
-        }
-    }
-    
-    newArticle() { 
-        console.log('📄 New article');
-        if (this.editor) {
-            this.editor.innerHTML = '';
-            this.updateWordCount();
-            this.currentArticleId = null;
-            this.loadArticlesList();
-        }
-    }
-    
-    clearEditor() { 
-        console.log('🗑️ Clear editor');
-        if (confirm('Opravdu chcete vymazat celý obsah?')) {
-            this.newArticle();
-        }
-    }
-
-    async submitPrompt() {
-        console.log('✅ Submit prompt');
-        const prompt = this.promptInput ? this.promptInput.value.trim() : '';
-        if (!prompt) return;
-
-        this.hideModal();
-        await this.processAIAction('custom', prompt);
+    hideSaveModal() {
+        this.saveModal.classList.add('hidden');
+        this.articleTitle.value = '';
     }
 
     confirmSaveArticle() {
-        console.log('✅ Confirm save article');
-        const title = this.articleTitle ? this.articleTitle.value.trim() : '';
-        const content = this.editor ? this.editor.innerHTML.trim() : '';
+        const title = this.articleTitle.value.trim();
+        const content = this.editor.innerHTML.trim();
         
         if (!title) {
             this.showError('Zadejte název článku');
@@ -847,12 +1000,299 @@ class AITextEditor {
     }
 
     loadArticlesList() {
-        console.log('📚 Load articles list');
-        // Placeholder - implementuj podle potřeby
+        let articles = this.getSavedArticles();
+        
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        switch (this.currentFilter) {
+            case 'recent':
+                articles = articles.filter(article => new Date(article.timestamp) >= sevenDaysAgo);
+                break;
+            case 'trash':
+                articles = articles.filter(article => article.isTrash);
+                break;
+            case 'all':
+            default:
+                articles = articles.filter(article => !article.isTrash);
+                break;
+        }
+        
+        if (articles.length === 0) {
+            this.articlesList.innerHTML = `
+                <div class="no-articles">
+                    <p>Zatím nemáte žádné články v kategorii "${this.getFilterName()}".</p>
+                    <p>Napište něco a klikněte na "Uložit"</p>
+                </div>
+            `;
+            return;
+        }
+
+        this.articlesList.innerHTML = articles.map(article => `
+            <div class="article-item ${article.id === this.currentArticleId ? 'active' : ''}" data-id="${article.id}">
+                <div class="article-header">
+                    <h4 class="article-title">${this.escapeHtml(article.title)}</h4>
+                    <div class="article-actions">
+                        <button class="delete-article" data-id="${article.id}" title="${article.isTrash ? 'Smazat natrvalo' : 'Přesunout do koše'}">×</button>
+                    </div>
+                </div>
+                <p class="article-preview">${this.escapeHtml(article.preview)}</p>
+                <div class="article-meta">
+                    <span class="article-date">${this.formatDate(article.timestamp)}</span>
+                </div>
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.article-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('delete-article')) {
+                    this.loadArticle(item.dataset.id);
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-article').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteArticle(btn.dataset.id);
+            });
+        });
+    }
+
+    getFilterName() {
+        const filterNames = {
+            'all': 'Všechny články',
+            'recent': 'Posledních 7 dní',
+            'trash': 'Koš'
+        };
+        return filterNames[this.currentFilter] || 'Neznámá kategorie';
+    }
+
+    loadArticle(articleId) {
+        const articles = this.getSavedArticles();
+        const article = articles.find(a => a.id === articleId);
+        
+        if (article) {
+            this.editor.innerHTML = article.content;
+            this.currentArticleId = articleId;
+            this.loadArticlesList();
+            this.updateWordCount();
+            this.showNotification(`Načten článek: ${article.title}`);
+        }
+    }
+
+    deleteArticle(articleId) {
+        const articles = this.getSavedArticles();
+        const article = articles.find(a => a.id === articleId);
+        
+        if (!article) return;
+
+        if (this.currentFilter === 'trash') {
+            if (confirm(`Opravdu chcete natrvalo smazat článek "${article.title}"?`)) {
+                const updatedArticles = articles.filter(a => a.id !== articleId);
+                localStorage.setItem('savedArticles', JSON.stringify(updatedArticles));
+                
+                if (this.currentArticleId === articleId) {
+                    this.newArticle();
+                }
+                
+                this.loadArticlesList();
+                this.showNotification(`Článek "${article.title}" byl natrvalo smazán`);
+            }
+        } else {
+            if (confirm(`Přesunout článek "${article.title}" do koše?`)) {
+                article.isTrash = true;
+                localStorage.setItem('savedArticles', JSON.stringify(articles));
+                
+                if (this.currentArticleId === articleId) {
+                    this.newArticle();
+                }
+                
+                this.loadArticlesList();
+                this.showNotification(`Článek "${article.title}" byl přesunut do koše`);
+            }
+        }
+    }
+
+    newArticle() {
+        this.editor.innerHTML = '';
+        this.currentArticleId = null;
+        this.loadArticlesList();
+        this.updateWordCount();
+        this.editor.focus();
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    formatDate(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'právě teď';
+        if (diffMins < 60) return `před ${diffMins} min`;
+        if (diffHours < 24) return `před ${diffHours} h`;
+        if (diffDays < 7) return `před ${diffDays} dny`;
+        
+        return date.toLocaleDateString('cs-CZ', {
+            day: 'numeric',
+            month: 'short',
+            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+    }
+
+    saveCursorPosition() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
+            this.lastCursorPosition = selection.getRangeAt(0).cloneRange();
+        }
+    }
+
+    showContextMenu(e) {
+        e.preventDefault();
+        console.log('Showing context menu');
+        
+        this.saveCursorPosition();
+        
+        const selection = window.getSelection();
+        this.selectedText = selection.toString().trim();
+        
+        document.querySelectorAll('.menu-item').forEach(item => {
+            const needsSelection = item.hasAttribute('data-needs-selection');
+            if (needsSelection) {
+                item.classList.toggle('disabled', !this.selectedText);
+            }
+        });
+
+        this.contextMenu.style.left = e.pageX + 'px';
+        this.contextMenu.style.top = e.pageY + 'px';
+        this.contextMenu.classList.remove('hidden');
+    }
+
+    hideContextMenu() {
+        this.contextMenu.classList.add('hidden');
+    }
+
+    handleMenuClick(e) {
+        e.stopPropagation();
+        
+        const action = e.currentTarget.dataset.action;
+        if (e.currentTarget.classList.contains('disabled')) return;
+
+        this.hideContextMenu();
+
+        if (action === 'generate') {
+            this.showPromptModal();
+        } else if (action === 'instagram') {
+            this.processInstagramImage(); // OPRAVA: Volá správnou metodu
+        } else {
+            this.processAIAction(action);
+        }
+    }
+
+    showPromptModal() {
+        this.promptModal.classList.remove('hidden');
+        this.promptInput.focus();
+    }
+
+    hideModal() {
+        this.promptModal.classList.add('hidden');
+        this.promptInput.value = '';
+    }
+
+    async submitPrompt() {
+        const prompt = this.promptInput.value.trim();
+        if (!prompt) return;
+
+        this.hideModal();
+        await this.processAIAction('custom', prompt);
+    }
+
+    // OPRAVA: Kompletní implementace Instagram carousel funkce
+    async processInstagramImage() {
+        console.log('📸 Processing Instagram carousel for text:', this.selectedText);
+        
+        // OPRAVA: Kontrola vybraného textu
+        if (!this.selectedText) {
+            this.showError('Musíte vybrat text pro vytvoření Instagram carousel');
+            return;
+        }
+        
+        this.showLoading();
+        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s realistickou fotografií...';
+
+        try {
+            const response = await fetch('/api/instagram-image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    selectedText: this.selectedText
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.result) {
+                await this.showInstagramPreview(data);
+            } else {
+                this.showError(data.error || 'Chyba při generování Instagram carousel');
+            }
+        } catch (error) {
+            console.error('Instagram carousel generation failed:', error);
+            this.showError('Chyba při generování carousel: ' + error.message);
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    async showInstagramPreview(data) {
+        console.log('📸 Showing Instagram preview with data:', data);
+        
+        // Create Instagram post object
+        this.currentInstagramPost = {
+            id: null,
+            title: data.title,
+            text: data.result,
+            hashtags: data.hashtags,
+            imageDescription: data.imageDescription,
+            backgroundImageUrl: data.backgroundImageUrl,
+            timestamp: null
+        };
+
+        // Fill form fields
+        const instagramText = document.getElementById('instagramText');
+        const instagramHashtags = document.getElementById('instagramHashtags');
+        const instagramImagePrompt = document.getElementById('instagramImagePrompt');
+        
+        if (instagramText) instagramText.value = data.result;
+        if (instagramHashtags) instagramHashtags.value = data.hashtags;
+        if (instagramImagePrompt) instagramImagePrompt.value = data.imageDescription;
+
+        // Show sidebar
+        this.showInstagramSidebar();
+
+        // Update preview
+        await this.updateInstagramPreview();
+
+        this.showNotification('Instagram carousel vygenerován! Můžete ho upravit v pravém panelu.');
     }
 
     async processAIAction(action, customPrompt = '') {
-        console.log('🤖 Process AI action:', action);
+        console.log('Processing AI action:', { action, customPrompt, selectedText: this.selectedText });
         
         this.showLoading();
 
@@ -870,7 +1310,8 @@ class AITextEditor {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
@@ -881,7 +1322,7 @@ class AITextEditor {
                 this.showError(data.error || 'Prázdná odpověď z API');
             }
         } catch (error) {
-            console.error('AI action failed:', error);
+            console.error('Request failed:', error);
             this.showError('Chyba sítě: ' + error.message);
         } finally {
             this.hideLoading();
@@ -889,130 +1330,160 @@ class AITextEditor {
     }
 
     insertAIResult(result, action) {
-        console.log('📝 Inserting AI result for action:', action);
-        
-        if (!this.editor) return;
+        console.log('Inserting AI result:', { result: result.substring(0, 100), action });
         
         this.editor.focus();
+        
+        const selection = window.getSelection();
         
         try {
             if (action === 'generate' || action === 'custom') {
                 if (this.lastCursorPosition) {
-                    const selection = window.getSelection();
                     selection.removeAllRanges();
                     selection.addRange(this.lastCursorPosition);
                 }
                 
-                document.execCommand('insertText', false, result);
-            } else if (this.selectedText) {
-                document.execCommand('insertText', false, result);
+                const range = selection.getRangeAt(0);
+                const textNode = document.createTextNode(result);
+                range.insertNode(textNode);
+                
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+            } else if (this.selectedText && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                
+                if (range.collapsed && this.selectedText) {
+                    const editorText = this.editor.textContent;
+                    const textIndex = editorText.indexOf(this.selectedText);
+                    
+                    if (textIndex !== -1) {
+                        const textNode = this.findTextNode(this.editor, textIndex);
+                        if (textNode) {
+                            range.setStart(textNode.node, textNode.offset);
+                            range.setEnd(textNode.node, textNode.offset + this.selectedText.length);
+                        }
+                    }
+                }
+                
+                range.deleteContents();
+                const textNode = document.createTextNode(result);
+                range.insertNode(textNode);
+                
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
             } else {
-                const currentContent = this.editor.innerHTML;
-                this.editor.innerHTML = currentContent + '<br>' + result;
+                this.editor.appendChild(document.createTextNode('\n' + result));
             }
             
         } catch (error) {
             console.error('Error inserting text:', error);
-            this.editor.innerHTML += '<br>' + result;
+            this.editor.appendChild(document.createTextNode('\n' + result));
         }
         
         this.selectedText = '';
         this.autoSave();
         this.updateWordCount();
+        
+        console.log('Text successfully inserted');
+    }
+
+    findTextNode(element, targetIndex) {
+        let currentIndex = 0;
+        
+        function traverse(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const nodeLength = node.textContent.length;
+                if (currentIndex + nodeLength > targetIndex) {
+                    return {
+                        node: node,
+                        offset: targetIndex - currentIndex
+                    };
+                }
+                currentIndex += nodeLength;
+            } else {
+                for (let child of node.childNodes) {
+                    const result = traverse(child);
+                    if (result) return result;
+                }
+            }
+            return null;
+        }
+        
+        return traverse(element);
+    }
+
+    trackSelection() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
+            this.selectionRange = selection.getRangeAt(0).cloneRange();
+        }
     }
 
     showLoading() {
-        if (this.loadingOverlay) {
-            this.loadingOverlay.classList.remove('hidden');
-        }
+        this.loadingOverlay.classList.remove('hidden');
     }
 
     hideLoading() {
-        if (this.loadingOverlay) {
-            this.loadingOverlay.classList.add('hidden');
+        this.loadingOverlay.classList.add('hidden');
+    }
+
+    showError(message) {
+        console.error('Error:', message);
+        alert('Chyba: ' + message);
+    }
+
+    autoSave() {
+        localStorage.setItem('currentWork', this.editor.innerHTML);
+    }
+
+    clearEditor() {
+        if (confirm('Opravdu chcete vymazat celý obsah?')) {
+            this.newArticle();
         }
     }
 
-    // Placeholder metody
-    processInstagramImage() { console.log('📸 Process Instagram'); }
-    hideInstagramSidebar() { console.log('📸 Hide Instagram sidebar'); }
-    regenerateInstagramImage() { console.log('📸 Regenerate Instagram image'); }
-    saveInstagramPost() { console.log('📸 Save Instagram post'); }
-    downloadInstagramSlides() { console.log('📸 Download Instagram slides'); }
-    autoSave() { /* Auto save logic */ }
-    saveCursorPosition() { /* Save cursor logic */ }
-    trackSelection() { /* Track selection logic */ }
-}
-
-// OPRAVA: Robustnější inicializace s více pokusy
-function initializeApp() {
-    console.log('🚀 Initializing AI Text Editor...');
-    
-    let attempts = 0;
-    const maxAttempts = 5;
-    
-    function tryInitialize() {
-        attempts++;
-        console.log(`🔄 Initialization attempt ${attempts}/${maxAttempts}`);
+    showNotification(message) {
+        const notification = document.createElement('div');
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            z-index: 4000;
+            font-weight: 500;
+            font-size: 13px;
+            box-shadow: var(--shadow);
+        `;
         
-        try {
-            new AITextEditor();
-            console.log('✅ App initialized successfully');
-        } catch (error) {
-            console.error(`❌ Initialization attempt ${attempts} failed:`, error);
-            
-            if (attempts < maxAttempts) {
-                setTimeout(tryInitialize, 1000 * attempts); // Exponential backoff
-            } else {
-                console.error('❌ All initialization attempts failed');
-            }
-        }
-    }
-    
-    // Čekáme na DOM
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(tryInitialize, 500);
-        });
-    } else {
-        setTimeout(tryInitialize, 500);
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
     }
 }
 
-// Spusť aplikaci
-initializeApp();
+// Inicializace aplikace
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing app...');
+    new AITextEditor();
+});
 
-// Debug funkce pro testování
-window.testContextMenu = function() {
-    console.log('🧪 Testing context menu...');
-    if (globalEditor && globalEditor.contextMenu) {
-        globalEditor.contextMenu.style.left = '100px';
-        globalEditor.contextMenu.style.top = '100px';
-        globalEditor.contextMenu.style.display = 'block';
-        globalEditor.contextMenu.classList.remove('hidden');
-        console.log('✅ Context menu should be visible');
-    } else {
-        console.error('❌ Global editor or context menu not found');
-    }
-};
-
-window.testButtons = function() {
-    console.log('🧪 Testing buttons...');
-    const saveBtn = document.getElementById('saveBtn');
-    if (saveBtn) {
-        console.log('✅ Save button found, triggering click...');
-        saveBtn.click();
-    } else {
-        console.error('❌ Save button not found');
-    }
-};
-
-window.testMenuItems = function() {
-    console.log('🧪 Testing menu items...');
-    const menuItems = document.querySelectorAll('.menu-item');
-    console.log(`Found ${menuItems.length} menu items`);
+// Debug funkce
+window.testInstagramCarousel = function() {
+    console.log('🧪 Testing Instagram carousel...');
     
-    menuItems.forEach((item, index) => {
-        console.log(`Menu item ${index}:`, item.dataset.action, item);
-    });
+    if (globalEditor) {
+        globalEditor.selectedText = 'Test text pro Instagram carousel';
+        globalEditor.processInstagramImage();
+        console.log('✅ Instagram carousel test triggered');
+    } else {
+        console.error('❌ Global editor not found');
+    }
 };
