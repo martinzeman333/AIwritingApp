@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// OPRAVA: AI Image generation s pixel art optimalizací
+// OPRAVA: AI Image generation s pixel art optimalizací a čištěním markdown
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -74,12 +74,50 @@ app.post('/api/generate-image', async (req, res) => {
       try {
         console.log('🎮 Trying OpenAI DALL-E 3 with PIXEL ART style...');
         
-        // OPRAVA: Optimalizovaný prompt pro pixel art
-        const pixelArtPrompt = prompt.includes('pixel art') 
-          ? prompt 
-          : `${prompt}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
+        // OPRAVA: Vyčisti prompt od markdown značek
+        let cleanPrompt = prompt
+          .replace(/\*\*/g, '')  // Odstraň **
+          .replace(/\*/g, '')    // Odstraň *
+          .replace(/#/g, '')     // Odstraň #
+          .replace(/_/g, '')     // Odstraň _
+          .replace(/---/g, '')   // Odstraň ---
+          .replace(/:/g, '')     // Odstraň dvojtečky
+          .replace(/"/g, '')     // Odstraň uvozovky
+          .replace(/'/g, '')     // Odstraň apostrofy
+          .replace(/\[/g, '')    // Odstraň [
+          .replace(/\]/g, '')    // Odstraň ]
+          .replace(/\(/g, '')    // Odstraň (
+          .replace(/\)/g, '')    // Odstraň )
+          .replace(/\{/g, '')    // Odstraň {
+          .replace(/\}/g, '')    // Odstraň }
+          .replace(/\|/g, '')    // Odstraň |
+          .replace(/\\/g, '')    // Odstraň \
+          .replace(/\//g, '')    // Odstraň /
+          .replace(/\+/g, '')    // Odstraň +
+          .replace(/=/g, '')     // Odstraň =
+          .replace(/~/g, '')     // Odstraň ~
+          .replace(/`/g, '')     // Odstraň `
+          .replace(/\^/g, '')    // Odstraň ^
+          .replace(/%/g, '')     // Odstraň %
+          .replace(/&/g, 'and')  // Nahraď & za and
+          .replace(/\$/g, '')    // Odstraň $
+          .replace(/@/g, '')     // Odstraň @
+          .replace(/!/g, '')     // Odstraň !
+          .replace(/\?/g, '')    // Odstraň ?
+          .replace(/</g, '')     // Odstraň <
+          .replace(/>/g, '')     // Odstraň >
+          .replace(/;/g, '')     // Odstraň ;
+          .replace(/\./g, '')    // Odstraň tečky
+          .replace(/,/g, '')     // Odstraň čárky
+          .replace(/\s+/g, ' ')  // Nahraď více mezer jednou
+          .trim();               // Odstraň mezery na začátku/konci
         
-        console.log('🎮 Using pixel art prompt:', pixelArtPrompt);
+        // OPRAVA: Optimalizovaný prompt pro pixel art
+        const pixelArtPrompt = cleanPrompt.includes('pixel art') 
+          ? cleanPrompt 
+          : `${cleanPrompt}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
+        
+        console.log('🎮 Using cleaned pixel art prompt:', pixelArtPrompt);
         
         const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
@@ -187,7 +225,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// OPRAVA: Instagram carousel endpoint s pixel art stylem
+// OPRAVA: Instagram carousel endpoint s vyčištěním markdown z promptů
 app.post('/api/instagram-image', async (req, res) => {
   try {
     const { selectedText } = req.body;
@@ -247,13 +285,13 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 3. OPRAVA: Vygeneruj stručný popis pro pixel art - zaměř se na hlavní postavu/věc
+    // 3. OPRAVA: Vygeneruj stručný popis pro pixel art - ČISTÝ TEXT bez markdown
     const imageDescriptionResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
       model: 'llama-3.1-sonar-small-128k-online',
       messages: [
         { 
           role: 'system', 
-          content: 'Na základě textu identifikuj HLAVNÍ postavu, osobu, objekt nebo místo a vytvoř velmi stručný popis v angličtině (max 8 slov). Zaměř se pouze na tu nejdůležitější věc z textu. Nepoužívej "pixel art" - to se přidá automaticky. Příklady: "businessman in suit", "mountain landscape", "racing car", "medieval castle", "smartphone", "coffee cup".' 
+          content: 'Na základě textu identifikuj HLAVNÍ postavu, osobu, objekt nebo místo a vytvoř velmi stručný popis v angličtině (max 6 slov). Zaměř se pouze na tu nejdůležitější věc z textu. NEPOUŽÍVEJ ŽÁDNÉ markdown značky jako **, *, #, _, ---. Nepoužívaj dvojtečky, pomlčky nebo speciální znaky. Odpověz pouze prostými slovy. Příklady: "businessman in suit", "mountain landscape", "racing car", "medieval castle".' 
         },
         { 
           role: 'user', 
@@ -261,7 +299,7 @@ app.post('/api/instagram-image', async (req, res) => {
         }
       ],
       temperature: 0.6,
-      max_tokens: 30
+      max_tokens: 20
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
@@ -293,18 +331,64 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 5. OPRAVA: Vygeneruj pixel art ilustraci s novým promptem
-    let backgroundImageUrl = null;
+    // 5. OPRAVA: Vyčisti mainSubject od markdown a vytvoř pixel art prompt
     let mainSubject = imageDescriptionResponse.data.choices[0].message.content.trim();
     
-    // OPRAVA: Vytvoř pixel art prompt podle požadavků
+    // OPRAVA: Agresivní čištění markdown a speciálních znaků
+    mainSubject = mainSubject
+      .replace(/\*\*/g, '')  // Odstraň **
+      .replace(/\*/g, '')    // Odstraň *
+      .replace(/#/g, '')     // Odstraň #
+      .replace(/_/g, '')     // Odstraň _
+      .replace(/---/g, '')   // Odstraň ---
+      .replace(/:/g, '')     // Odstraň dvojtečky
+      .replace(/"/g, '')     // Odstraň uvozovky
+      .replace(/'/g, '')     // Odstraň apostrofy
+      .replace(/\[/g, '')    // Odstraň [
+      .replace(/\]/g, '')    // Odstraň ]
+      .replace(/\(/g, '')    // Odstraň (
+      .replace(/\)/g, '')    // Odstraň )
+      .replace(/\{/g, '')    // Odstraň {
+      .replace(/\}/g, '')    // Odstraň }
+      .replace(/\|/g, '')    // Odstraň |
+      .replace(/\\/g, '')    // Odstraň \
+      .replace(/\//g, '')    // Odstraň /
+      .replace(/\+/g, '')    // Odstraň +
+      .replace(/=/g, '')     // Odstraň =
+      .replace(/~/g, '')     // Odstraň ~
+      .replace(/`/g, '')     // Odstraň `
+      .replace(/\^/g, '')    // Odstraň ^
+      .replace(/%/g, '')     // Odstraň %
+      .replace(/&/g, 'and')  // Nahraď & za and
+      .replace(/\$/g, '')    // Odstraň $
+      .replace(/@/g, '')     // Odstraň @
+      .replace(/!/g, '')     // Odstraň !
+      .replace(/\?/g, '')    // Odstraň ?
+      .replace(/</g, '')     // Odstraň <
+      .replace(/>/g, '')     // Odstraň >
+      .replace(/;/g, '')     // Odstraň ;
+      .replace(/\./g, '')    // Odstraň tečky
+      .replace(/,/g, '')     // Odstraň čárky
+      .replace(/\s+/g, ' ')  // Nahraď více mezer jednou
+      .trim();               // Odstraň mezery na začátku/konci
+    
+    // OPRAVA: Pokud je mainSubject prázdný nebo moc krátký, použij fallback
+    if (!mainSubject || mainSubject.length < 3) {
+      mainSubject = 'person in business suit';
+      console.log('⚠️ Using fallback mainSubject:', mainSubject);
+    }
+    
+    // OPRAVA: Vytvoř čistý pixel art prompt bez problematických znaků
     const pixelArtPrompt = `${mainSubject}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
     
-    console.log('🎮 Generated pixel art prompt:', pixelArtPrompt);
+    console.log('🎮 Cleaned mainSubject:', mainSubject);
+    console.log('🎮 Final pixel art prompt:', pixelArtPrompt);
+    
+    let backgroundImageUrl = null;
     
     if (process.env.OPENAI_API_KEY) {
       try {
-        console.log('🎮 Generating pixel art with ChatGPT...');
+        console.log('🎮 Generating pixel art with cleaned prompt...');
         
         const imageResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
@@ -323,12 +407,12 @@ app.post('/api/instagram-image', async (req, res) => {
 
         if (imageResponse.data.data?.[0]?.url) {
           backgroundImageUrl = imageResponse.data.data[0].url;
-          console.log('🎮 Pixel art illustration generated:', backgroundImageUrl);
+          console.log('🎮 Pixel art illustration generated successfully:', backgroundImageUrl);
         }
       } catch (imageError) {
-        console.log('❌ Image generation failed:', imageError.message);
+        console.log('❌ Image generation failed:', imageError.response?.data || imageError.message);
         
-        // OPRAVA: Fallback na placeholder s debug informacemi
+        // OPRAVA: Lepší fallback handling
         console.log('🔄 Using placeholder image as fallback');
         backgroundImageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
       }
@@ -363,11 +447,11 @@ app.post('/api/instagram-image', async (req, res) => {
     let hashtags = hashtagsResponse.data.choices[0].message.content.trim();
     hashtags = hashtags.split(/\s+/).filter(tag => tag.startsWith('#')).join(' ');
     
-    console.log('🎮 Generated Instagram carousel with PIXEL ART:', {
+    console.log('🎮 Generated Instagram carousel with CLEANED PIXEL ART:', {
       title: title,
       text: slideText,
       hashtags: hashtags,
-      mainSubject: mainSubject,
+      cleanedMainSubject: mainSubject,
       pixelArtPrompt: pixelArtPrompt,
       backgroundImage: backgroundImageUrl
     });
@@ -379,7 +463,7 @@ app.post('/api/instagram-image', async (req, res) => {
       hashtags: hashtags,
       backgroundImageUrl: backgroundImageUrl,
       imageDescription: pixelArtPrompt,
-      action: 'instagram-carousel-pixel-art',
+      action: 'instagram-carousel-pixel-art-cleaned',
       timestamp: new Date().toISOString()
     });
 
@@ -630,5 +714,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🎨 Stability AI: ${process.env.STABILITY_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🎮 Instagram: Pixel art ilustrace přes ChatGPT DALL-E`);
+  console.log(`🎮 Instagram: Pixel art ilustrace s vyčištěnými prompty`);
 });
