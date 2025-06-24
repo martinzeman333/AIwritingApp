@@ -677,7 +677,7 @@ class AITextEditor {
         this.createPreviewSlide2(ctx2);
     }
 
-    // OPRAVA: Lepší handling obrázků s debug informacemi
+    // OPRAVA: Lepší handling obrázků s debug informacemi a textem ve spodní části
     async createPreviewSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
@@ -760,6 +760,26 @@ class AITextEditor {
         } catch (error) {
             console.error('❌ Error creating preview slide 1:', error);
             this.imageGenerator.createGradientBackground(ctx);
+            
+            // OPRAVA: Přidej text i při chybě
+            ctx.font = 'bold 22px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+            
+            const maxWidth = ctx.canvas.width * 0.85;
+            const lines = this.imageGenerator.wrapText(ctx, this.currentInstagramPost.title, maxWidth);
+            const lineHeight = 28;
+            const bottomPadding = 20;
+            const startY = ctx.canvas.height - bottomPadding - (lines.length - 1) * lineHeight;
+
+            lines.forEach((line, index) => {
+                const y = startY + index * lineHeight;
+                ctx.strokeText(line, ctx.canvas.width / 2, y);
+                ctx.fillText(line, ctx.canvas.width / 2, y);
+            });
         }
     }
 
@@ -947,7 +967,7 @@ class AITextEditor {
         this.imageGenerator.addTextToSlide(ctx, this.currentInstagramPost.text);
     }
 
-    // OPRAVA: Debug metoda pro testování obrázků
+    // Debug metoda pro testování obrázků
     async testImageLoading() {
         if (!this.currentInstagramPost?.backgroundImageUrl) {
             console.log('❌ No background image URL to test');
@@ -1543,5 +1563,24 @@ window.testInstagramCarousel = function() {
         console.log('✅ Instagram carousel test triggered');
     } else {
         console.error('❌ Global editor not found');
+    }
+};
+
+window.forceCreateSlide = function() {
+    console.log('🧪 Force creating slide with test data...');
+    
+    if (globalEditor) {
+        globalEditor.currentInstagramPost = {
+            title: 'Test nadpis',
+            text: 'Test text pro slide',
+            backgroundImageUrl: null
+        };
+        
+        const canvas1 = document.getElementById('previewCanvas1');
+        if (canvas1) {
+            const ctx1 = canvas1.getContext('2d');
+            globalEditor.createPreviewSlide1(ctx1);
+            console.log('✅ Test slide created');
+        }
     }
 };
