@@ -822,3 +822,45 @@ body {
 #editor {
     user-select: text !important;
 }
+/* KRITICKÉ OPRAVY PRO KLIKATELNOST */
+.btn-primary, .btn-secondary, .btn-icon, .toolbar-btn, .section-item, .menu-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+/* Context menu musí být nad vším */
+.context-menu {
+    pointer-events: auto !important;
+    z-index: 9999 !important;
+    position: fixed !important;
+    display: block !important;
+}
+
+.context-menu.hidden {
+    display: none !important;
+}
+
+/* Menu items musí být absolutně klikatelné */
+.menu-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    display: flex !important;
+    position: relative !important;
+}
+
+.menu-item.disabled {
+    pointer-events: auto !important;
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+
+/* Zajisti, že editor nezablokuje context menu */
+#editor {
+    user-select: text !important;
+    position: relative !important;
+}
+
