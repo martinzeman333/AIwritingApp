@@ -12,8 +12,8 @@
         <header>
             <h1>✨ AI Textový Editor</h1>
             <div class="header-actions">
-                <button id="saveBtn" class="btn-secondary">💾 Uložit</button>
-                <button id="loadBtn" class="btn-secondary">📂 Načíst</button>
+                <button id="saveBtn" class="btn-secondary">💾 Uložit článek</button>
+                <button id="newBtn" class="btn-secondary">📄 Nový článek</button>
                 <button id="clearBtn" class="btn-secondary">🗑️ Vymazat</button>
             </div>
         </header>
@@ -21,6 +21,20 @@
         <main>
             <div id="editor" contenteditable="true" placeholder="Začni psát... Klikni pravým tlačítkem pro AI asistenta"></div>
         </main>
+
+        <!-- Seznam uložených článků -->
+        <aside class="articles-sidebar">
+            <div class="sidebar-header">
+                <h3>📚 Uložené články</h3>
+                <button id="clearAllBtn" class="btn-danger-small">🗑️ Vymazat vše</button>
+            </div>
+            <div id="articlesList" class="articles-list">
+                <div class="no-articles">
+                    <p>Zatím nemáte žádné uložené články.</p>
+                    <p>Napište něco a klikněte na "💾 Uložit článek"</p>
+                </div>
+            </div>
+        </aside>
 
         <!-- Kontextové menu -->
         <div id="contextMenu" class="context-menu hidden">
@@ -63,6 +77,18 @@
             </div>
         </div>
 
+        <!-- Modal pro uložení článku -->
+        <div id="saveModal" class="modal hidden">
+            <div class="modal-content">
+                <h3>💾 Uložit článek</h3>
+                <input type="text" id="articleTitle" placeholder="Zadejte název článku..." />
+                <div class="modal-actions">
+                    <button id="cancelSave" class="btn-secondary">Zrušit</button>
+                    <button id="confirmSave" class="btn-primary">Uložit</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading overlay -->
         <div id="loadingOverlay" class="loading-overlay hidden">
             <div class="loading-spinner">
@@ -74,4 +100,4 @@
 
     <script src="script.js"></script>
 </body>
-</html> 
+</html>
