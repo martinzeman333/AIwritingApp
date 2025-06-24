@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// AI Image generation s komixovým stylem
+// OPRAVA: AI Image generation s pixel art optimalizací
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -64,19 +64,26 @@ app.post('/api/generate-image', async (req, res) => {
       });
     }
 
-    console.log('Generating AI image for prompt:', prompt);
+    console.log('🎮 Generating PIXEL ART image for prompt:', prompt);
 
     let imageUrl = null;
     let generationMethod = 'none';
 
-    // Pokus 1: OpenAI DALL-E 3 s komixovým stylem
+    // OPRAVA: Pokus 1: OpenAI DALL-E 3 s pixel art optimalizací
     if (process.env.OPENAI_API_KEY && !imageUrl) {
       try {
-        console.log('Trying OpenAI DALL-E 3 with comic style...');
+        console.log('🎮 Trying OpenAI DALL-E 3 with PIXEL ART style...');
+        
+        // OPRAVA: Optimalizovaný prompt pro pixel art
+        const pixelArtPrompt = prompt.includes('pixel art') 
+          ? prompt 
+          : `${prompt}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
+        
+        console.log('🎮 Using pixel art prompt:', pixelArtPrompt);
         
         const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
-          prompt: `${prompt}, comic book art style, vibrant colors, cartoon illustration, graphic novel style, detailed comic book drawing, professional comic art`,
+          prompt: pixelArtPrompt,
           n: 1,
           size: '1024x1024',
           quality: 'hd',
@@ -91,21 +98,21 @@ app.post('/api/generate-image', async (req, res) => {
 
         if (openaiResponse.data.data?.[0]?.url) {
           imageUrl = openaiResponse.data.data[0].url;
-          generationMethod = 'openai-dalle3-comic';
-          console.log('Comic image generated via OpenAI DALL-E 3:', imageUrl);
+          generationMethod = 'openai-dalle3-pixel-art';
+          console.log('🎮 Pixel art image generated via OpenAI DALL-E 3:', imageUrl);
         }
       } catch (openaiError) {
-        console.log('OpenAI DALL-E 3 failed:', openaiError.response?.data || openaiError.message);
+        console.log('❌ OpenAI DALL-E 3 failed:', openaiError.response?.data || openaiError.message);
       }
     }
 
-    // Pokus 2: Stability AI s komixovým stylem
+    // Pokus 2: Stability AI s pixel art stylem
     if (process.env.STABILITY_API_KEY && !imageUrl) {
       try {
-        console.log('Trying Stability AI...');
+        console.log('🎮 Trying Stability AI with pixel art...');
         
         const stabilityResponse = await axios.post('https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image', {
-          text_prompts: [{ text: `${prompt}, comic book style, cartoon art, illustration` }],
+          text_prompts: [{ text: `${prompt}, pixel art style, 16-bit graphics, retro game aesthetic, blocky visuals` }],
           cfg_scale: 7,
           height: 1024,
           width: 1024,
@@ -122,21 +129,21 @@ app.post('/api/generate-image', async (req, res) => {
 
         if (stabilityResponse.data.artifacts?.[0]?.base64) {
           imageUrl = `data:image/png;base64,${stabilityResponse.data.artifacts[0].base64}`;
-          generationMethod = 'stability-ai-comic';
-          console.log('Comic image generated via Stability AI');
+          generationMethod = 'stability-ai-pixel-art';
+          console.log('🎮 Pixel art image generated via Stability AI');
         }
       } catch (stabilityError) {
-        console.log('Stability AI failed:', stabilityError.response?.data || stabilityError.message);
+        console.log('❌ Stability AI failed:', stabilityError.response?.data || stabilityError.message);
       }
     }
 
-    // Pokus 3: Fallback na DALL-E 2
+    // Pokus 3: Fallback na DALL-E 2 s pixel art
     if (process.env.OPENAI_API_KEY && !imageUrl) {
       try {
-        console.log('Trying OpenAI DALL-E 2 as fallback...');
+        console.log('🎮 Trying OpenAI DALL-E 2 as fallback...');
         
         const dalle2Response = await axios.post('https://api.openai.com/v1/images/generations', {
-          prompt: `${prompt}, comic book art style, cartoon illustration`,
+          prompt: `${prompt}, pixel art style, 8-bit graphics, retro aesthetic, blocky visuals`,
           n: 1,
           size: '1024x1024'
         }, {
@@ -149,16 +156,16 @@ app.post('/api/generate-image', async (req, res) => {
 
         if (dalle2Response.data.data?.[0]?.url) {
           imageUrl = dalle2Response.data.data[0].url;
-          generationMethod = 'openai-dalle2-comic';
-          console.log('Comic image generated via OpenAI DALL-E 2');
+          generationMethod = 'openai-dalle2-pixel-art';
+          console.log('🎮 Pixel art image generated via OpenAI DALL-E 2');
         }
       } catch (dalle2Error) {
-        console.log('OpenAI DALL-E 2 failed:', dalle2Error.response?.data || dalle2Error.message);
+        console.log('❌ OpenAI DALL-E 2 failed:', dalle2Error.response?.data || dalle2Error.message);
       }
     }
 
     if (!imageUrl) {
-      console.log('All AI image generation methods failed, using placeholder');
+      console.log('❌ All AI image generation methods failed, using placeholder');
       imageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
       generationMethod = 'placeholder';
     }
@@ -172,7 +179,7 @@ app.post('/api/generate-image', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Image generation error:', error);
+    console.error('❌ Image generation error:', error);
     res.status(500).json({
       success: false,
       error: 'Chyba při generování obrázku: ' + error.message
@@ -180,7 +187,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// Instagram carousel endpoint - opravený bez markdown + komixové ilustrace
+// OPRAVA: Instagram carousel endpoint s pixel art stylem
 app.post('/api/instagram-image', async (req, res) => {
   try {
     const { selectedText } = req.body;
@@ -192,9 +199,9 @@ app.post('/api/instagram-image', async (req, res) => {
       });
     }
 
-    console.log('Generating Instagram carousel for text:', selectedText.substring(0, 50));
+    console.log('🎮 Generating Instagram carousel with PIXEL ART for text:', selectedText.substring(0, 50));
 
-    // 1. Vygeneruj krátký poutavý nadpis pro první slide (BEZ MARKDOWN)
+    // 1. Vygeneruj krátký poutavý nadpis pro první slide
     const titleResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
       model: 'llama-3.1-sonar-small-128k-online',
       messages: [
@@ -217,7 +224,7 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 2. Vygeneruj čistý text pro druhý slide (BEZ MARKDOWN)
+    // 2. Vygeneruj čistý text pro druhý slide
     const textResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
       model: 'llama-3.1-sonar-small-128k-online',
       messages: [
@@ -240,21 +247,21 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 3. Vygeneruj popis pro komixovou ilustraci
+    // 3. OPRAVA: Vygeneruj stručný popis pro pixel art - zaměř se na hlavní postavu/věc
     const imageDescriptionResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
       model: 'llama-3.1-sonar-small-128k-online',
       messages: [
         { 
           role: 'system', 
-          content: 'Na základě textu vytvoř krátký popis pro komixovou ilustraci v angličtině. Začni vždy "Comic book style illustration of" a popiš konkrétní scénu, osobu nebo místo z textu. Maximálně 15 slov. Zaměř se na vizuální prvky vhodné pro komiks.' 
+          content: 'Na základě textu identifikuj HLAVNÍ postavu, osobu, objekt nebo místo a vytvoř velmi stručný popis v angličtině (max 8 slov). Zaměř se pouze na tu nejdůležitější věc z textu. Nepoužívej "pixel art" - to se přidá automaticky. Příklady: "businessman in suit", "mountain landscape", "racing car", "medieval castle", "smartphone", "coffee cup".' 
         },
         { 
           role: 'user', 
-          content: `Vytvoř popis komixové ilustrace pro: "${selectedText}"` 
+          content: `Identifikuj hlavní postavu/věc z tohoto textu a popiš ji stručně: "${selectedText}"` 
         }
       ],
       temperature: 0.6,
-      max_tokens: 50
+      max_tokens: 30
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
@@ -263,7 +270,7 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 4. Vygeneruj čisté hashtags (BEZ MARKDOWN)
+    // 4. Vygeneruj čisté hashtags
     const hashtagsResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
       model: 'llama-3.1-sonar-small-128k-online',
       messages: [
@@ -286,21 +293,22 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 5. Vygeneruj komixovou ilustraci přes ChatGPT API
+    // 5. OPRAVA: Vygeneruj pixel art ilustraci s novým promptem
     let backgroundImageUrl = null;
-    let imageDescription = imageDescriptionResponse.data.choices[0].message.content.trim();
+    let mainSubject = imageDescriptionResponse.data.choices[0].message.content.trim();
     
-    if (!imageDescription.toLowerCase().startsWith('comic book style illustration of')) {
-      imageDescription = `Comic book style illustration of ${imageDescription}`;
-    }
+    // OPRAVA: Vytvoř pixel art prompt podle požadavků
+    const pixelArtPrompt = `${mainSubject}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
+    
+    console.log('🎮 Generated pixel art prompt:', pixelArtPrompt);
     
     if (process.env.OPENAI_API_KEY) {
       try {
-        console.log('Generating comic illustration with ChatGPT:', imageDescription);
+        console.log('🎮 Generating pixel art with ChatGPT...');
         
         const imageResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
-          prompt: `${imageDescription}, comic book art style, vibrant colors, cartoon illustration, graphic novel style, detailed comic book drawing, professional comic art, pop art style`,
+          prompt: pixelArtPrompt,
           n: 1,
           size: '1024x1024',
           quality: 'hd',
@@ -315,44 +323,52 @@ app.post('/api/instagram-image', async (req, res) => {
 
         if (imageResponse.data.data?.[0]?.url) {
           backgroundImageUrl = imageResponse.data.data[0].url;
-          console.log('Comic illustration generated:', backgroundImageUrl);
+          console.log('🎮 Pixel art illustration generated:', backgroundImageUrl);
         }
       } catch (imageError) {
-        console.log('Image generation failed:', imageError.message);
+        console.log('❌ Image generation failed:', imageError.message);
+        
+        // OPRAVA: Fallback na placeholder s debug informacemi
+        console.log('🔄 Using placeholder image as fallback');
+        backgroundImageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
       }
+    } else {
+      console.log('⚠️ No OpenAI API key, using placeholder');
+      backgroundImageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
     }
 
-    // OPRAVA: Vyčisti text od markdown značek
+    // Vyčisti text od markdown značek
     const title = titleResponse.data.choices[0].message.content.trim()
-      .replace(/[#*_`~\[\]]/g, '')  // Odstraň markdown znaky
-      .replace(/^[-\s]+|[-\s]+$/g, '')  // Odstraň pomlčky na začátku/konci
-      .replace(/\*\*/g, '')  // Odstraň tučné značky
-      .replace(/###/g, '')  // Odstraň nadpisy
-      .replace(/####/g, '')  // Odstraň nadpisy
-      .replace(/^- /gm, '')  // Odstraň odrážky
-      .replace(/^\* /gm, ''); // Odstraň odrážky
+      .replace(/[#*_`~\[\]]/g, '')
+      .replace(/^[-\s]+|[-\s]+$/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/###/g, '')
+      .replace(/####/g, '')
+      .replace(/^- /gm, '')
+      .replace(/^\* /gm, '');
 
     const slideText = textResponse.data.choices[0].message.content.trim()
-      .replace(/[#*_`~\[\]]/g, '')  // Odstraň markdown znaky
-      .replace(/^[-\s]+|[-\s]+$/g, '')  // Odstraň pomlčky na začátku/konci
-      .replace(/\*\*/g, '')  // Odstraň tučné značky
-      .replace(/###/g, '')  // Odstraň nadpisy
-      .replace(/####/g, '')  // Odstraň nadpisy
-      .replace(/^- /gm, '')  // Odstraň odrážky
-      .replace(/^\* /gm, '')  // Odstraň odrážky
-      .replace(/^Sport$/gm, '')  // Odstraň kategorie
-      .replace(/^Politika$/gm, '')  // Odstraň kategorie
-      .replace(/^Ekonomika$/gm, ''); // Odstraň kategorie
+      .replace(/[#*_`~\[\]]/g, '')
+      .replace(/^[-\s]+|[-\s]+$/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/###/g, '')
+      .replace(/####/g, '')
+      .replace(/^- /gm, '')
+      .replace(/^\* /gm, '')
+      .replace(/^Sport$/gm, '')
+      .replace(/^Politika$/gm, '')
+      .replace(/^Ekonomika$/gm, '');
     
     // Vyčisti hashtags
     let hashtags = hashtagsResponse.data.choices[0].message.content.trim();
     hashtags = hashtags.split(/\s+/).filter(tag => tag.startsWith('#')).join(' ');
     
-    console.log('Generated Instagram carousel:', {
+    console.log('🎮 Generated Instagram carousel with PIXEL ART:', {
       title: title,
       text: slideText,
       hashtags: hashtags,
-      imageDescription: imageDescription,
+      mainSubject: mainSubject,
+      pixelArtPrompt: pixelArtPrompt,
       backgroundImage: backgroundImageUrl
     });
 
@@ -362,13 +378,13 @@ app.post('/api/instagram-image', async (req, res) => {
       result: slideText,
       hashtags: hashtags,
       backgroundImageUrl: backgroundImageUrl,
-      imageDescription: imageDescription,
-      action: 'instagram-carousel',
+      imageDescription: pixelArtPrompt,
+      action: 'instagram-carousel-pixel-art',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Instagram carousel generation error:', error);
+    console.error('❌ Instagram carousel generation error:', error);
     res.status(500).json({
       success: false,
       error: 'Chyba při generování Instagram carousel: ' + (error.response?.data?.error?.message || error.message)
@@ -614,5 +630,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🎨 Stability AI: ${process.env.STABILITY_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📸 Instagram: Komixové ilustrace přes ChatGPT DALL-E`);
+  console.log(`🎮 Instagram: Pixel art ilustrace přes ChatGPT DALL-E`);
 });
