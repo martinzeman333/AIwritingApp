@@ -144,13 +144,15 @@ class AITextEditor {
         this.articleTitle = document.getElementById('articleTitle');
         this.articlesList = document.getElementById('articlesList');
         this.wordCountElement = document.querySelector('.word-count');
+        this.instagramSidebar = document.getElementById('instagramSidebar');
         this.imageGenerator = new InstagramImageGenerator();
         
         this.selectedText = '';
         this.selectionRange = null;
         this.lastCursorPosition = null;
         this.currentArticleId = null;
-        this.instagramData = null;
+        this.currentInstagramPost = null;
+        this.currentFilter = 'all';
         
         this.initializeEventListeners();
         this.loadArticlesList();
@@ -174,6 +176,7 @@ class AITextEditor {
     initializeEventListeners() {
         console.log('Initializing event listeners...');
         
+        // Context menu
         this.editor.addEventListener('contextmenu', (e) => {
             console.log('Context menu triggered');
             this.showContextMenu(e);
@@ -185,6 +188,7 @@ class AITextEditor {
             }
         });
         
+        // Menu items
         const menuItems = document.querySelectorAll('.menu-item');
         console.log('Found menu items:', menuItems.length);
         menuItems.forEach(item => {
@@ -194,6 +198,19 @@ class AITextEditor {
             });
         });
 
+        // Library sidebar filters
+        document.querySelectorAll('.section-item[data-filter]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                this.handleFilterClick(e);
+            });
+        });
+
+        // New project button
+        document.getElementById('newProjectBtn')?.addEventListener('click', () => {
+            this.createNewProject();
+        });
+
+        // Header buttons
         const saveBtn = document.getElementById('saveBtn');
         const newBtn = document.getElementById('newBtn');
         const clearBtn = document.getElementById('clearBtn');
@@ -219,6 +236,7 @@ class AITextEditor {
             });
         }
 
+        // Modal buttons
         const submitPrompt = document.getElementById('submitPrompt');
         const cancelPrompt = document.getElementById('cancelPrompt');
         const confirmSave = document.getElementById('confirmSave');
@@ -237,6 +255,37 @@ class AITextEditor {
             cancelSave.addEventListener('click', () => this.hideSaveModal());
         }
 
+        // Instagram sidebar
+        document.getElementById('closeInstagramSidebar')?.addEventListener('click', () => {
+            this.hideInstagramSidebar();
+        });
+
+        document.getElementById('instagramText')?.addEventListener('input', (e) => {
+            if (this.currentInstagramPost) {
+                this.currentInstagramPost.text = e.target.value;
+                this.updateInstagramPreview();
+            }
+        });
+
+        document.getElementById('instagramHashtags')?.addEventListener('input', (e) => {
+            if (this.currentInstagramPost) {
+                this.currentInstagramPost.hashtags = e.target.value;
+            }
+        });
+
+        document.getElementById('regenerateInstagramImage')?.addEventListener('click', () => {
+            this.regenerateInstagramImage();
+        });
+
+        document.getElementById('saveInstagramPost')?.addEventListener('click', () => {
+            this.saveInstagramPost();
+        });
+
+        document.getElementById('downloadInstagramSlides')?.addEventListener('click', () => {
+            this.downloadInstagramSlides();
+        });
+
+        // Editor events
         this.editor.addEventListener('input', () => {
             this.autoSave();
             this.updateWordCount();
@@ -255,6 +304,295 @@ class AITextEditor {
         }
         
         console.log('Event listeners initialized');
+    }
+
+    handleFilterClick(e) {
+        // Remove active from all filter items
+        document.querySelectorAll('.section-item[data-filter]').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Add active to clicked item
+        e.currentTarget.classList.add('active');
+        
+        // Update current filter
+        this.currentFilter = e.currentTarget.dataset.filter;
+        
+        // Reload articles list with filter
+        this.loadArticlesList();
+    }
+
+    createNewProject() {
+        const projectName = prompt('Zadejte název nového projektu:');
+        if (projectName) {
+            this.showNotification(`Projekt "${projectName}" vytvořen`);
+            // Here you could implement project creation logic
+        }
+    }
+
+    showInstagramSidebar() {
+        this.instagramSidebar.classList.remove('hidden');
+    }
+
+    hideInstagramSidebar() {
+        this.instagramSidebar.classList.add('hidden');
+        this.currentInstagramPost = null;
+    }
+
+    async updateInstagramPreview() {
+        if (!this.currentInstagramPost) return;
+
+        const canvas1 = document.getElementById('previewCanvas1');
+        const canvas2 = document.getElementById('previewCanvas2');
+        
+        if (!canvas1 || !canvas2) return;
+
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+
+        // Update slide 1
+        await this.createPreviewSlide1(ctx1);
+        
+        // Update slide 2
+        this.createPreviewSlide2(ctx2);
+    }
+
+    async createPreviewSlide1(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        try {
+            if (this.currentInstagramPost.backgroundImageUrl) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        this.imageGenerator.createGradientBackground(ctx);
+                        resolve();
+                    };
+                    img.src = this.currentInstagramPost.backgroundImageUrl;
+                });
+            } else {
+                this.imageGenerator.createGradientBackground(ctx);
+            }
+            
+            // Dark overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            // Add title (scaled down for preview)
+            ctx.font = 'bold 22px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+
+            const maxWidth = ctx.canvas.width * 0.85;
+            const lines = this.imageGenerator.wrapText(ctx, this.currentInstagramPost.title, maxWidth);
+            const lineHeight = 28;
+            const startY = ctx.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+
+            lines.forEach((line, index) => {
+                const y = startY + index * lineHeight;
+                ctx.strokeText(line, ctx.canvas.width / 2, y);
+                ctx.fillText(line, ctx.canvas.width / 2, y);
+            });
+
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+        } catch (error) {
+            console.error('Error creating preview slide 1:', error);
+        }
+    }
+
+    createPreviewSlide2(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        this.imageGenerator.createAbstractBackground(ctx);
+        
+        // Add text (scaled down for preview)
+        ctx.font = '13px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        const maxWidth = ctx.canvas.width * 0.85;
+        const lines = this.imageGenerator.wrapText(ctx, this.currentInstagramPost.text, maxWidth);
+        const lineHeight = 18;
+        const startY = ctx.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+
+        lines.forEach((line, index) => {
+            const y = startY + index * lineHeight;
+            ctx.fillText(line, ctx.canvas.width / 2, y);
+        });
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+    }
+
+    async regenerateInstagramImage() {
+        if (!this.currentInstagramPost) return;
+
+        const newPrompt = document.getElementById('instagramImagePrompt').value;
+        if (!newPrompt) return;
+
+        this.showLoading();
+        document.getElementById('loadingText').textContent = 'Regeneruji obrázek...';
+
+        try {
+            const response = await fetch('/api/generate-image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    prompt: `${newPrompt}, realistic photography, high quality, professional photo, suitable for Instagram post`
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.success && data.imageUrl) {
+                this.currentInstagramPost.backgroundImageUrl = data.imageUrl;
+                this.currentInstagramPost.imageDescription = newPrompt;
+                await this.updateInstagramPreview();
+                this.showNotification('Obrázek regenerován');
+            } else {
+                this.showError('Chyba při regeneraci obrázku');
+            }
+        } catch (error) {
+            this.showError('Chyba při regeneraci: ' + error.message);
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    saveInstagramPost() {
+        if (!this.currentInstagramPost) return;
+
+        // Update current post with form values
+        this.currentInstagramPost.text = document.getElementById('instagramText').value;
+        this.currentInstagramPost.hashtags = document.getElementById('instagramHashtags').value;
+        this.currentInstagramPost.imageDescription = document.getElementById('instagramImagePrompt').value;
+
+        // Save to localStorage
+        const instagramPosts = this.getSavedInstagramPosts();
+        
+        if (this.currentInstagramPost.id) {
+            // Update existing
+            const index = instagramPosts.findIndex(p => p.id === this.currentInstagramPost.id);
+            if (index !== -1) {
+                instagramPosts[index] = this.currentInstagramPost;
+            }
+        } else {
+            // Create new
+            this.currentInstagramPost.id = this.generateUUID();
+            this.currentInstagramPost.timestamp = new Date().toISOString();
+            instagramPosts.unshift(this.currentInstagramPost);
+        }
+
+        localStorage.setItem('instagramPosts', JSON.stringify(instagramPosts));
+        this.showNotification('Instagram post uložen');
+    }
+
+    getSavedInstagramPosts() {
+        const posts = localStorage.getItem('instagramPosts');
+        return posts ? JSON.parse(posts) : [];
+    }
+
+    downloadInstagramSlides() {
+        if (!this.currentInstagramPost) return;
+
+        // Create full-size canvases for download
+        const canvas1 = document.createElement('canvas');
+        const canvas2 = document.createElement('canvas');
+        
+        canvas1.width = 1080;
+        canvas1.height = 1350;
+        canvas2.width = 1080;
+        canvas2.height = 1350;
+        
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+        
+        // Generate full-size slides
+        this.createFullSizeSlide1(ctx1).then(() => {
+            this.createFullSizeSlide2(ctx2);
+            
+            // Download slides
+            const link1 = document.createElement('a');
+            link1.download = 'instagram-slide-1.png';
+            link1.href = canvas1.toDataURL('image/png');
+            link1.click();
+
+            setTimeout(() => {
+                const link2 = document.createElement('a');
+                link2.download = 'instagram-slide-2.png';
+                link2.href = canvas2.toDataURL('image/png');
+                link2.click();
+                
+                this.showNotification('Slides staženy');
+            }, 500);
+        });
+    }
+
+    async createFullSizeSlide1(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        try {
+            if (this.currentInstagramPost.backgroundImageUrl) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        this.imageGenerator.createGradientBackground(ctx);
+                        resolve();
+                    };
+                    img.src = this.currentInstagramPost.backgroundImageUrl;
+                });
+            } else {
+                this.imageGenerator.createGradientBackground(ctx);
+            }
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            this.imageGenerator.addTitleToSlide(ctx, this.currentInstagramPost.title);
+            
+        } catch (error) {
+            console.error('Error creating full-size slide 1:', error);
+            this.imageGenerator.createGradientBackground(ctx);
+            this.imageGenerator.addTitleToSlide(ctx, this.currentInstagramPost.title);
+        }
+    }
+
+    createFullSizeSlide2(ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        this.imageGenerator.createAbstractBackground(ctx);
+        this.imageGenerator.addTextToSlide(ctx, this.currentInstagramPost.text);
     }
 
     showSaveModal() {
@@ -305,7 +643,8 @@ class AITextEditor {
             title: title,
             content: content,
             timestamp: new Date().toISOString(),
-            preview: this.generatePreview(content)
+            preview: this.generatePreview(content),
+            isTrash: false
         };
 
         articles.unshift(newArticle);
@@ -328,7 +667,24 @@ class AITextEditor {
     }
 
     loadArticlesList() {
-        const articles = this.getSavedArticles();
+        let articles = this.getSavedArticles();
+        
+        // Apply filter
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        switch (this.currentFilter) {
+            case 'recent':
+                articles = articles.filter(article => new Date(article.timestamp) >= sevenDaysAgo);
+                break;
+            case 'trash':
+                articles = articles.filter(article => article.isTrash);
+                break;
+            case 'all':
+            default:
+                articles = articles.filter(article => !article.isTrash);
+                break;
+        }
         
         if (articles.length === 0) {
             this.articlesList.innerHTML = `
@@ -345,7 +701,7 @@ class AITextEditor {
                 <div class="article-header">
                     <h4 class="article-title">${this.escapeHtml(article.title)}</h4>
                     <div class="article-actions">
-                        <button class="delete-article" data-id="${article.id}" title="Smazat článek">×</button>
+                        <button class="delete-article" data-id="${article.id}" title="${article.isTrash ? 'Smazat natrvalo' : 'Přesunout do koše'}">×</button>
                     </div>
                 </div>
                 <p class="article-preview">${this.escapeHtml(article.preview)}</p>
@@ -388,16 +744,34 @@ class AITextEditor {
         const articles = this.getSavedArticles();
         const article = articles.find(a => a.id === articleId);
         
-        if (article && confirm(`Opravdu chcete smazat článek "${article.title}"?`)) {
-            const updatedArticles = articles.filter(a => a.id !== articleId);
-            localStorage.setItem('savedArticles', JSON.stringify(updatedArticles));
-            
-            if (this.currentArticleId === articleId) {
-                this.newArticle();
+        if (!article) return;
+
+        if (this.currentFilter === 'trash') {
+            // Permanent delete
+            if (confirm(`Opravdu chcete natrvalo smazat článek "${article.title}"?`)) {
+                const updatedArticles = articles.filter(a => a.id !== articleId);
+                localStorage.setItem('savedArticles', JSON.stringify(updatedArticles));
+                
+                if (this.currentArticleId === articleId) {
+                    this.newArticle();
+                }
+                
+                this.loadArticlesList();
+                this.showNotification(`Článek "${article.title}" byl natrvalo smazán`);
             }
-            
-            this.loadArticlesList();
-            this.showNotification(`Článek "${article.title}" byl smazán`);
+        } else {
+            // Move to trash
+            if (confirm(`Přesunout článek "${article.title}" do koše?`)) {
+                article.isTrash = true;
+                localStorage.setItem('savedArticles', JSON.stringify(articles));
+                
+                if (this.currentArticleId === articleId) {
+                    this.newArticle();
+                }
+                
+                this.loadArticlesList();
+                this.showNotification(`Článek "${article.title}" byl přesunut do koše`);
+            }
         }
     }
 
@@ -527,7 +901,7 @@ class AITextEditor {
             const data = await response.json();
 
             if (data.success && data.result) {
-                await this.createInstagramSlides(data);
+                await this.showInstagramPreview(data);
             } else {
                 this.showError(data.error || 'Chyba při generování Instagram carousel');
             }
@@ -539,106 +913,30 @@ class AITextEditor {
         }
     }
 
-    async createInstagramSlides(data) {
-        const slide1Canvas = document.createElement('canvas');
-        const slide2Canvas = document.createElement('canvas');
-        
-        slide1Canvas.width = 1080;
-        slide1Canvas.height = 1350;
-        slide2Canvas.width = 1080;
-        slide2Canvas.height = 1350;
-        
-        const ctx1 = slide1Canvas.getContext('2d');
-        const ctx2 = slide2Canvas.getContext('2d');
-        
-        await this.createSlide1(ctx1, data);
-        this.createSlide2(ctx2, data);
-        this.downloadSlides(slide1Canvas, slide2Canvas, data);
-    }
+    async showInstagramPreview(data) {
+        // Create Instagram post object
+        this.currentInstagramPost = {
+            id: null,
+            title: data.title,
+            text: data.result,
+            hashtags: data.hashtags,
+            imageDescription: data.imageDescription,
+            backgroundImageUrl: data.backgroundImageUrl,
+            timestamp: null
+        };
 
-    async createSlide1(ctx, data) {
-        document.getElementById('loadingText').textContent = 'Generuji první slide s AI obrázkem...';
-        
-        try {
-            if (data.backgroundImageUrl) {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                
-                await new Promise((resolve, reject) => {
-                    img.onload = () => {
-                        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
-                        resolve();
-                    };
-                    img.onerror = () => {
-                        console.log('AI image failed to load, using gradient');
-                        this.imageGenerator.createGradientBackground(ctx);
-                        resolve();
-                    };
-                    img.src = data.backgroundImageUrl;
-                });
-            } else {
-                this.imageGenerator.createGradientBackground(ctx);
-            }
-            
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            
-            this.imageGenerator.addTitleToSlide(ctx, data.title || data.result.substring(0, 50));
-            
-        } catch (error) {
-            console.error('Error creating slide 1:', error);
-            this.imageGenerator.createGradientBackground(ctx);
-            this.imageGenerator.addTitleToSlide(ctx, data.title || data.result.substring(0, 50));
-        }
-    }
+        // Fill form fields
+        document.getElementById('instagramText').value = data.result;
+        document.getElementById('instagramHashtags').value = data.hashtags;
+        document.getElementById('instagramImagePrompt').value = data.imageDescription;
 
-    createSlide2(ctx, data) {
-        document.getElementById('loadingText').textContent = 'Generuji druhý slide s textem...';
-        
-        this.imageGenerator.createAbstractBackground(ctx);
-        this.imageGenerator.addTextToSlide(ctx, data.result);
-    }
+        // Show sidebar
+        this.showInstagramSidebar();
 
-    downloadSlides(slide1Canvas, slide2Canvas, data) {
-        document.getElementById('loadingText').textContent = 'Připravuji ke stažení...';
-        
-        const link1 = document.createElement('a');
-        link1.download = 'instagram-slide-1-image.png';
-        link1.href = slide1Canvas.toDataURL('image/png');
-        link1.click();
+        // Update preview
+        await this.updateInstagramPreview();
 
-        setTimeout(() => {
-            const link2 = document.createElement('a');
-            link2.download = 'instagram-slide-2-text.png';
-            link2.href = slide2Canvas.toDataURL('image/png');
-            link2.click();
-            
-            if (data.hashtags) {
-                navigator.clipboard.writeText(data.hashtags).then(() => {
-                    this.showNotification('Instagram carousel slides staženy! Hashtags zkopírovány do schránky.');
-                });
-            } else {
-                this.showNotification('Instagram carousel slides staženy!');
-            }
-            
-            setTimeout(() => {
-                alert(`Instagram Carousel vytvořen! 🎉
-
-📥 Staženy 2 slides:
-• Slide 1: AI obrázek s nadpisem
-• Slide 2: Text na moderním pozadí
-
-📋 Hashtags zkopírovány do schránky
-
-📱 Jak zveřejnit na Instagramu:
-1. Otevři Instagram aplikaci
-2. Klikni na + pro nový příspěvek
-3. Vyber oba stažené obrázky (v pořadí)
-4. Vlož hashtags ze schránky jako popis
-5. Zveřejni carousel!`);
-            }, 1000);
-            
-        }, 1000);
+        this.showNotification('Instagram carousel vygenerován! Můžete ho upravit a uložit.');
     }
 
     async processAIAction(action, customPrompt = '') {
@@ -671,155 +969,3 @@ class AITextEditor {
             } else {
                 this.showError(data.error || 'Prázdná odpověď z API');
             }
-        } catch (error) {
-            console.error('Request failed:', error);
-            this.showError('Chyba sítě: ' + error.message);
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    insertAIResult(result, action) {
-        console.log('Inserting AI result:', { result: result.substring(0, 100), action });
-        
-        this.editor.focus();
-        
-        const selection = window.getSelection();
-        
-        try {
-            if (action === 'generate' || action === 'custom') {
-                if (this.lastCursorPosition) {
-                    selection.removeAllRanges();
-                    selection.addRange(this.lastCursorPosition);
-                }
-                
-                const range = selection.getRangeAt(0);
-                const textNode = document.createTextNode(result);
-                range.insertNode(textNode);
-                
-                range.setStartAfter(textNode);
-                range.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                
-            } else if (this.selectedText && selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                
-                if (range.collapsed && this.selectedText) {
-                    const editorText = this.editor.textContent;
-                    const textIndex = editorText.indexOf(this.selectedText);
-                    
-                    if (textIndex !== -1) {
-                        const textNode = this.findTextNode(this.editor, textIndex);
-                        if (textNode) {
-                            range.setStart(textNode.node, textNode.offset);
-                            range.setEnd(textNode.node, textNode.offset + this.selectedText.length);
-                        }
-                    }
-                }
-                
-                range.deleteContents();
-                const textNode = document.createTextNode(result);
-                range.insertNode(textNode);
-                
-                range.setStartAfter(textNode);
-                range.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(range);
-            } else {
-                this.editor.appendChild(document.createTextNode('\n' + result));
-            }
-            
-        } catch (error) {
-            console.error('Error inserting text:', error);
-            this.editor.appendChild(document.createTextNode('\n' + result));
-        }
-        
-        this.selectedText = '';
-        this.autoSave();
-        this.updateWordCount();
-        
-        console.log('Text successfully inserted');
-    }
-
-    findTextNode(element, targetIndex) {
-        let currentIndex = 0;
-        
-        function traverse(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const nodeLength = node.textContent.length;
-                if (currentIndex + nodeLength > targetIndex) {
-                    return {
-                        node: node,
-                        offset: targetIndex - currentIndex
-                    };
-                }
-                currentIndex += nodeLength;
-            } else {
-                for (let child of node.childNodes) {
-                    const result = traverse(child);
-                    if (result) return result;
-                }
-            }
-            return null;
-        }
-        
-        return traverse(element);
-    }
-
-    trackSelection() {
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
-            this.selectionRange = selection.getRangeAt(0).cloneRange();
-        }
-    }
-
-    showLoading() {
-        this.loadingOverlay.classList.remove('hidden');
-    }
-
-    hideLoading() {
-        this.loadingOverlay.classList.add('hidden');
-    }
-
-    showError(message) {
-        console.error('Error:', message);
-        alert('Chyba: ' + message);
-    }
-
-    autoSave() {
-        localStorage.setItem('currentWork', this.editor.innerHTML);
-    }
-
-    clearEditor() {
-        if (confirm('Opravdu chcete vymazat celý obsah?')) {
-            this.newArticle();
-        }
-    }
-
-    showNotification(message) {
-        const notification = document.createElement('div');
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--accent);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            z-index: 4000;
-            font-weight: 500;
-            font-size: 13px;
-            box-shadow: var(--shadow);
-        `;
-        
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing app...');
-    new AITextEditor();
-});
