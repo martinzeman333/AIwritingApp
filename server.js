@@ -3,7 +3,6 @@ const cors = require('cors');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const FormData = require('form-data');
 require('dotenv').config();
 
 const app = express();
@@ -203,7 +202,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// Skutečné Instagram postování
+// Instagram post endpoint (zjednodušená verze - pouze stahování)
 app.post('/api/post-to-instagram', async (req, res) => {
   try {
     const { imageData, caption, hashtags } = req.body;
@@ -215,103 +214,34 @@ app.post('/api/post-to-instagram', async (req, res) => {
       });
     }
 
-    // Zkontroluj potřebné environment variables
-    if (!process.env.INSTAGRAM_ACCESS_TOKEN || !process.env.INSTAGRAM_USER_ID) {
-      return res.status(500).json({
-        success: false,
-        error: 'Instagram API credentials nejsou nastaveny. Potřebujete INSTAGRAM_ACCESS_TOKEN a INSTAGRAM_USER_ID.'
-      });
-    }
-
-    console.log('Posting to Instagram...');
+    console.log('Preparing Instagram content for manual posting...');
 
     const fullCaption = `${caption}\n\n${hashtags}`;
-    const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-    const igUserId = process.env.INSTAGRAM_USER_ID;
-
-    // Krok 1: Nahrát obrázek a vytvořit media container
-    console.log('Step 1: Creating media container...');
     
-    let imageUrl = imageData;
-    
-    // Pokud je imageData base64, musíme ji nahrát někam veřejně dostupné
-    if (imageData.startsWith('data:image')) {
-      // Pro demo - v produkci byste nahráli na AWS S3, Cloudinary, atd.
-      console.log('Base64 image detected - you need to upload it to a public URL first');
-      return res.status(400).json({
-        success: false,
-        error: 'Base64 obrázky nejsou podporovány. Obrázek musí být dostupný na veřejné URL.'
-      });
-    }
-
-    const mediaContainerResponse = await axios.post(
-      `https://graph.facebook.com/v18.0/${igUserId}/media`,
-      {
-        image_url: imageUrl,
-        caption: fullCaption,
-        access_token: accessToken
-      }
-    );
-
-    const containerId = mediaContainerResponse.data.id;
-    console.log('Media container created:', containerId);
-
-    // Krok 2: Čekat až bude container FINISHED
-    console.log('Step 2: Waiting for container to be ready...');
-    
-    let containerStatus = 'IN_PROGRESS';
-    let attempts = 0;
-    const maxAttempts = 30; // 30 sekund max
-
-    while (containerStatus !== 'FINISHED' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Čekej 1 sekundu
-      
-      const statusResponse = await axios.get(
-        `https://graph.facebook.com/v18.0/${containerId}?fields=status_code&access_token=${accessToken}`
-      );
-      
-      containerStatus = statusResponse.data.status_code;
-      console.log(`Container status: ${containerStatus} (attempt ${attempts + 1})`);
-      
-      if (containerStatus === 'ERROR') {
-        throw new Error('Media container processing failed');
-      }
-      
-      attempts++;
-    }
-
-    if (containerStatus !== 'FINISHED') {
-      throw new Error('Media container processing timeout');
-    }
-
-    // Krok 3: Publikovat media container
-    console.log('Step 3: Publishing media container...');
-    
-    const publishResponse = await axios.post(
-      `https://graph.facebook.com/v18.0/${igUserId}/media_publish`,
-      {
-        creation_id: containerId,
-        access_token: accessToken
-      }
-    );
-
-    const mediaId = publishResponse.data.id;
-    console.log('Media published successfully:', mediaId);
-
+    // Místo skutečného postování připravíme data pro manuální použití
     res.json({
       success: true,
-      message: 'Příspěvek byl úspěšně zveřejněn na Instagramu!',
-      mediaId: mediaId,
-      containerId: containerId,
+      message: 'Instagram obsah je připraven ke stažení. Můžete ho manuálně zveřejnit na Instagramu.',
+      data: {
+        caption: fullCaption,
+        imageUrl: imageData,
+        instructions: [
+          '1. Stáhněte si obrázek pomocí tlačítka "Stáhnout slides"',
+          '2. Zkopírujte text pomocí tlačítka "Kopírovat text"', 
+          '3. Otevřete Instagram aplikaci',
+          '4. Vytvořte nový příspěvek a nahrajte obrázek',
+          '5. Vložte zkopírovaný text jako popis',
+          '6. Zveřejněte příspěvek'
+        ]
+      },
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Instagram posting error:', error.response?.data || error.message);
+    console.error('Instagram preparation error:', error);
     res.status(500).json({
       success: false,
-      error: 'Chyba při zveřejňování na Instagramu: ' + (error.response?.data?.error?.message || error.message),
-      details: error.response?.data
+      error: 'Chyba při přípravě Instagram obsahu: ' + error.message
     });
   }
 });
@@ -635,8 +565,6 @@ app.get('/health', (req, res) => {
     env: {
       hasPerplexityKey: !!process.env.PERPLEXITY_API_KEY,
       hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-      hasInstagramToken: !!process.env.INSTAGRAM_ACCESS_TOKEN,
-      hasInstagramUserId: !!process.env.INSTAGRAM_USER_ID,
       nodeEnv: process.env.NODE_ENV,
       port: PORT
     }
@@ -670,7 +598,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📅 Spuštěno: ${new Date().toISOString()}`);
   console.log(`🔑 Perplexity API: ${process.env.PERPLEXITY_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🤖 OpenAI API: ${process.env.OPENAI_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
-  console.log(`📸 Instagram Token: ${process.env.INSTAGRAM_ACCESS_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
-  console.log(`👤 Instagram User ID: ${process.env.INSTAGRAM_USER_ID ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📸 Instagram: Manuální postování (automatické postování vyžaduje Instagram API setup)`);
 });
