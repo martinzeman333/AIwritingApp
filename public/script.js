@@ -534,4 +534,398 @@ class AITextEditor {
         if (diffDays < 7) return `před ${diffDays} dny`;
         
         return date.toLocaleDateString('cs-CZ', {
-            day:
+            day: 'numeric',
+            month: 'short',
+            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+    }
+
+    saveCursorPosition() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
+            this.lastCursorPosition = selection.getRangeAt(0).cloneRange();
+        }
+    }
+
+    restoreCursorPosition() {
+        if (this.lastCursorPosition) {
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(this.lastCursorPosition);
+        }
+    }
+
+    showContextMenu(e) {
+        e.preventDefault();
+        
+        // Uložit pozici kurzoru před zobrazením menu
+        this.saveCursorPosition();
+        
+        const selection = window.getSelection();
+        this.selectedText = selection.toString().trim();
+        
+        // Aktualizuj stav menu items
+        document.querySelectorAll('.menu-item').forEach(item => {
+            const needsSelection = item.hasAttribute('data-needs-selection');
+            if (needsSelection) {
+                item.classList.toggle('disabled', !this.selectedText);
+            }
+        });
+
+        this.contextMenu.style.left = e.pageX + 'px';
+        this.contextMenu.style.top = e.pageY + 'px';
+        this.contextMenu.classList.remove('hidden');
+    }
+
+    hideContextMenu() {
+        this.contextMenu.classList.add('hidden');
+    }
+
+    handleMenuClick(e) {
+        e.stopPropagation();
+        
+        const action = e.currentTarget.dataset.action;
+        if (e.currentTarget.classList.contains('disabled')) return;
+
+        this.hideContextMenu();
+
+        if (action === 'generate') {
+            this.showPromptModal();
+        } else if (action === 'instagram') {
+            this.processInstagramImage();
+        } else {
+            this.processAIAction(action);
+        }
+    }
+
+    showPromptModal() {
+        this.promptModal.classList.remove('hidden');
+        this.promptInput.focus();
+    }
+
+    hideModal() {
+        this.promptModal.classList.add('hidden');
+        this.promptInput.value = '';
+    }
+
+    async submitPrompt() {
+        const prompt = this.promptInput.value.trim();
+        if (!prompt) return;
+
+        this.hideModal();
+        await this.processAIAction('custom', prompt);
+    }
+
+    async processInstagramImage() {
+        console.log('Processing Instagram image for text:', this.selectedText);
+        
+        this.showLoading();
+
+        try {
+            const response = await fetch('/api/instagram-image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    selectedText: this.selectedText
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.result) {
+                // Vygeneruj obrázek s AI pozadím
+                const imageDataUrl = this.imageGenerator.generateImage(
+                    data.result, 
+                    data.imageDescription || ''
+                );
+                
+                // Zobraz obrázek v novém okně s hashtags
+                this.showInstagramImage(imageDataUrl, data.result, data.hashtags || '');
+            } else {
+                this.showError(data.error || 'Chyba při generování Instagram postu');
+            }
+        } catch (error) {
+            console.error('Instagram image generation failed:', error);
+            this.showError('Chyba při generování obrázku: ' + error.message);
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    showInstagramImage(imageDataUrl, text, hashtags) {
+        // Vytvoř modal pro zobrazení obrázku
+        const modal = document.createElement('div');
+        modal.className = 'image-modal';
+        modal.innerHTML = `
+            <div class="image-modal-content">
+                <div class="image-modal-header">
+                    <h3>📸 Instagram Post</h3>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="image-container">
+                    <img src="${imageDataUrl}" alt="Instagram post" />
+                </div>
+                <div class="instagram-content">
+                    <div class="text-section">
+                        <label>📝 Text:</label>
+                        <textarea readonly>${text}</textarea>
+                    </div>
+                    <div class="hashtags-section">
+                        <label>🏷️ Hashtags:</label>
+                        <textarea readonly>${hashtags}</textarea>
+                    </div>
+                </div>
+                <div class="image-modal-actions">
+                    <button class="btn-secondary" id="downloadBtn">💾 Stáhnout obrázek</button>
+                    <button class="btn-secondary" id="copyTextBtn">📋 Kopírovat text</button>
+                    <button class="btn-primary" id="insertAllBtn">📝 Vložit vše</button>
+                </div>
+            </div>
+        `;
+
+        // Přidej styly
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 5000;
+            overflow-y: auto;
+        `;
+
+        document.body.appendChild(modal);
+
+        // Event listenery
+        modal.querySelector('.close-btn').onclick = () => modal.remove();
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+
+        modal.querySelector('#downloadBtn').onclick = () => {
+            const link = document.createElement('a');
+            link.download = 'instagram-post.png';
+            link.href = imageDataUrl;
+            link.click();
+        };
+
+        modal.querySelector('#copyTextBtn').onclick = () => {
+            const fullText = `${text}\n\n${hashtags}`;
+            navigator.clipboard.writeText(fullText).then(() => {
+                this.showNotification('Text zkopírován do schránky');
+            });
+        };
+
+        modal.querySelector('#insertAllBtn').onclick = () => {
+            const fullText = `${text}\n\n${hashtags}`;
+            this.insertAIResult(fullText, 'instagram');
+            modal.remove();
+        };
+    }
+
+    async processAIAction(action, customPrompt = '') {
+        console.log('Processing AI action:', { action, customPrompt, selectedText: this.selectedText });
+        
+        this.showLoading();
+
+        try {
+            const response = await fetch('/api/perplexity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: action,
+                    prompt: customPrompt,
+                    selectedText: this.selectedText
+                })
+            });
+
+            console.log('Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Response error:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log('Response data:', data);
+
+            if (data.success && data.result) {
+                this.insertAIResult(data.result, action);
+            } else {
+                this.showError(data.error || 'Prázdná odpověď z API');
+            }
+        } catch (error) {
+            console.error('Request failed:', error);
+            this.showError('Chyba sítě: ' + error.message);
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    insertAIResult(result, action) {
+        console.log('Inserting AI result:', { result: result.substring(0, 100), action });
+        
+        // Ujisti se, že editor má focus
+        this.editor.focus();
+        
+        const selection = window.getSelection();
+        
+        try {
+            if (action === 'generate' || action === 'custom') {
+                // Vložit na pozici kurzoru
+                if (this.lastCursorPosition) {
+                    selection.removeAllRanges();
+                    selection.addRange(this.lastCursorPosition);
+                }
+                
+                const range = selection.getRangeAt(0);
+                const textNode = document.createTextNode(result);
+                range.insertNode(textNode);
+                
+                // Posunout kurzor za vložený text
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+            } else if (this.selectedText && selection.rangeCount > 0) {
+                // Nahradit vybraný text
+                const range = selection.getRangeAt(0);
+                
+                // Pokud není nic vybráno, ale máme selectedText, najdi ho v editoru
+                if (range.collapsed && this.selectedText) {
+                    const editorText = this.editor.textContent;
+                    const textIndex = editorText.indexOf(this.selectedText);
+                    
+                    if (textIndex !== -1) {
+                        const textNode = this.findTextNode(this.editor, textIndex);
+                        if (textNode) {
+                            range.setStart(textNode.node, textNode.offset);
+                            range.setEnd(textNode.node, textNode.offset + this.selectedText.length);
+                        }
+                    }
+                }
+                
+                range.deleteContents();
+                const textNode = document.createTextNode(result);
+                range.insertNode(textNode);
+                
+                // Posunout kurzor za nahrazený text
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else {
+                // Fallback - vložit na konec editoru
+                this.editor.appendChild(document.createTextNode('\n' + result));
+            }
+            
+        } catch (error) {
+            console.error('Error inserting text:', error);
+            // Fallback - vložit na konec editoru
+            this.editor.appendChild(document.createTextNode('\n' + result));
+        }
+        
+        // Vyčistit selectedText
+        this.selectedText = '';
+        
+        // Auto-save
+        this.autoSave();
+        
+        console.log('Text successfully inserted');
+    }
+
+    findTextNode(element, targetIndex) {
+        let currentIndex = 0;
+        
+        function traverse(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const nodeLength = node.textContent.length;
+                if (currentIndex + nodeLength > targetIndex) {
+                    return {
+                        node: node,
+                        offset: targetIndex - currentIndex
+                    };
+                }
+                currentIndex += nodeLength;
+            } else {
+                for (let child of node.childNodes) {
+                    const result = traverse(child);
+                    if (result) return result;
+                }
+            }
+            return null;
+        }
+        
+        return traverse(element);
+    }
+
+    trackSelection() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && this.editor.contains(selection.anchorNode)) {
+            this.selectionRange = selection.getRangeAt(0).cloneRange();
+        }
+    }
+
+    showLoading() {
+        this.loadingOverlay.classList.remove('hidden');
+    }
+
+    hideLoading() {
+        this.loadingOverlay.classList.add('hidden');
+    }
+
+    showError(message) {
+        console.error('Error:', message);
+        alert('Chyba: ' + message);
+    }
+
+    autoSave() {
+        // Auto-save pouze aktuální práci, ne do seznamu článků
+        localStorage.setItem('currentWork', this.editor.innerHTML);
+    }
+
+    clearEditor() {
+        if (confirm('Opravdu chcete vymazat celý obsah?')) {
+            this.newArticle();
+        }
+    }
+
+    showNotification(message) {
+        const notification = document.createElement('div');
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #238636;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            z-index: 4000;
+            font-weight: 500;
+        `;
+        
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+    }
+}
+
+// Inicializace aplikace
+document.addEventListener('DOMContentLoaded', () => {
+    new AITextEditor();
+});
