@@ -12,14 +12,14 @@ class InstagramImageGenerator {
         this.ctx = this.canvas.getContext('2d');
     }
 
-    wrapText(text, maxWidth) {
+    wrapText(ctx, text, maxWidth) {
         const words = text.split(' ');
         const lines = [];
         let currentLine = words[0] || '';
 
         for (let i = 1; i < words.length; i++) {
             const word = words[i];
-            const width = this.ctx.measureText(currentLine + ' ' + word).width;
+            const width = ctx.measureText(currentLine + ' ' + word).width;
             if (width < maxWidth) {
                 currentLine += ' ' + word;
             } else {
@@ -31,40 +31,105 @@ class InstagramImageGenerator {
         return lines;
     }
 
-    generateImage(text, imageDescription = '') {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Gradient pozadí
-        const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+    createGradientBackground(ctx) {
+        const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width, ctx.canvas.height);
         gradient.addColorStop(0, '#667eea');
-        gradient.addColorStop(1, '#764ba2');
-        this.ctx.fillStyle = gradient;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        gradient.addColorStop(0.5, '#764ba2');
+        gradient.addColorStop(1, '#f093fb');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
 
-        // Přidej text
-        this.ctx.font = 'bold 72px Arial, sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        this.ctx.shadowBlur = 15;
-        this.ctx.shadowOffsetX = 3;
-        this.ctx.shadowOffsetY = 3;
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.strokeStyle = '#000000';
-        this.ctx.lineWidth = 6;
+    createAbstractBackground(ctx) {
+        const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width, ctx.canvas.height);
+        gradient.addColorStop(0, '#1a1a2e');
+        gradient.addColorStop(0.3, '#16213e');
+        gradient.addColorStop(0.7, '#0f3460');
+        gradient.addColorStop(1, '#533483');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        ctx.globalAlpha = 0.1;
+        
+        ctx.beginPath();
+        ctx.arc(ctx.canvas.width * 0.8, ctx.canvas.height * 0.2, 300, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.moveTo(ctx.canvas.width * 0.1, ctx.canvas.height * 0.8);
+        ctx.lineTo(ctx.canvas.width * 0.4, ctx.canvas.height * 0.6);
+        ctx.lineTo(ctx.canvas.width * 0.2, ctx.canvas.height * 0.95);
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(ctx.canvas.width * 0.15, ctx.canvas.height * 0.3, 100, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        
+        ctx.globalAlpha = 1;
+    }
 
-        const maxWidth = this.canvas.width * 0.85;
-        const lines = this.wrapText(text, maxWidth);
-        const lineHeight = 90;
-        const startY = this.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+    addTitleToSlide(ctx, title) {
+        ctx.font = 'bold 90px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 25;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 10;
+
+        const maxWidth = ctx.canvas.width * 0.85;
+        const lines = this.wrapText(ctx, title, maxWidth);
+        const lineHeight = 110;
+        const startY = ctx.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
 
         lines.forEach((line, index) => {
             const y = startY + index * lineHeight;
-            this.ctx.strokeText(line, this.canvas.width / 2, y);
-            this.ctx.fillText(line, this.canvas.width / 2, y);
+            ctx.strokeText(line, ctx.canvas.width / 2, y);
+            ctx.fillText(line, ctx.canvas.width / 2, y);
         });
 
-        return this.canvas.toDataURL('image/png');
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+    }
+
+    addTextToSlide(ctx, text) {
+        ctx.font = '52px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+
+        const maxWidth = ctx.canvas.width * 0.85;
+        const lines = this.wrapText(ctx, text, maxWidth);
+        const lineHeight = 70;
+        const startY = ctx.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+
+        lines.forEach((line, index) => {
+            const y = startY + index * lineHeight;
+            ctx.fillText(line, ctx.canvas.width / 2, y);
+        });
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
     }
 }
 
@@ -78,6 +143,7 @@ class AITextEditor {
         this.promptInput = document.getElementById('promptInput');
         this.articleTitle = document.getElementById('articleTitle');
         this.articlesList = document.getElementById('articlesList');
+        this.wordCountElement = document.querySelector('.word-count');
         this.imageGenerator = new InstagramImageGenerator();
         
         this.selectedText = '';
@@ -88,6 +154,7 @@ class AITextEditor {
         
         this.initializeEventListeners();
         this.loadArticlesList();
+        this.updateWordCount();
     }
 
     generateUUID() {
@@ -98,10 +165,15 @@ class AITextEditor {
         });
     }
 
+    updateWordCount() {
+        const text = this.editor.textContent.trim();
+        const words = text ? text.split(/\s+/).length : 0;
+        this.wordCountElement.textContent = `${words} Words`;
+    }
+
     initializeEventListeners() {
         console.log('Initializing event listeners...');
         
-        // Kontextové menu - opraveno
         this.editor.addEventListener('contextmenu', (e) => {
             console.log('Context menu triggered');
             this.showContextMenu(e);
@@ -113,7 +185,6 @@ class AITextEditor {
             }
         });
         
-        // Menu items - opraveno
         const menuItems = document.querySelectorAll('.menu-item');
         console.log('Found menu items:', menuItems.length);
         menuItems.forEach(item => {
@@ -123,7 +194,6 @@ class AITextEditor {
             });
         });
 
-        // Header buttons - opraveno
         const saveBtn = document.getElementById('saveBtn');
         const newBtn = document.getElementById('newBtn');
         const clearBtn = document.getElementById('clearBtn');
@@ -149,7 +219,6 @@ class AITextEditor {
             });
         }
 
-        // Modal buttons
         const submitPrompt = document.getElementById('submitPrompt');
         const cancelPrompt = document.getElementById('cancelPrompt');
         const confirmSave = document.getElementById('confirmSave');
@@ -168,15 +237,15 @@ class AITextEditor {
             cancelSave.addEventListener('click', () => this.hideSaveModal());
         }
 
-        // Auto-save
-        this.editor.addEventListener('input', () => this.autoSave());
+        this.editor.addEventListener('input', () => {
+            this.autoSave();
+            this.updateWordCount();
+        });
 
-        // Selection tracking
         document.addEventListener('selectionchange', () => this.trackSelection());
         this.editor.addEventListener('click', () => this.saveCursorPosition());
         this.editor.addEventListener('keyup', () => this.saveCursorPosition());
 
-        // Enter key v save modal
         if (this.articleTitle) {
             this.articleTitle.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -265,7 +334,7 @@ class AITextEditor {
             this.articlesList.innerHTML = `
                 <div class="no-articles">
                     <p>Zatím nemáte žádné uložené články.</p>
-                    <p>Napište něco a klikněte na "Uložit článek"</p>
+                    <p>Napište něco a klikněte na "Uložit"</p>
                 </div>
             `;
             return;
@@ -276,7 +345,7 @@ class AITextEditor {
                 <div class="article-header">
                     <h4 class="article-title">${this.escapeHtml(article.title)}</h4>
                     <div class="article-actions">
-                        <button class="btn-icon delete-article" data-id="${article.id}" title="Smazat článek">×</button>
+                        <button class="delete-article" data-id="${article.id}" title="Smazat článek">×</button>
                     </div>
                 </div>
                 <p class="article-preview">${this.escapeHtml(article.preview)}</p>
@@ -286,7 +355,6 @@ class AITextEditor {
             </div>
         `).join('');
 
-        // Přidej event listenery pro články
         document.querySelectorAll('.article-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('delete-article')) {
@@ -311,6 +379,7 @@ class AITextEditor {
             this.editor.innerHTML = article.content;
             this.currentArticleId = articleId;
             this.loadArticlesList();
+            this.updateWordCount();
             this.showNotification(`Načten článek: ${article.title}`);
         }
     }
@@ -336,6 +405,7 @@ class AITextEditor {
         this.editor.innerHTML = '';
         this.currentArticleId = null;
         this.loadArticlesList();
+        this.updateWordCount();
         this.editor.focus();
     }
 
@@ -433,9 +503,10 @@ class AITextEditor {
     }
 
     async processInstagramImage() {
-        console.log('Processing Instagram image for text:', this.selectedText);
+        console.log('Processing Instagram carousel for text:', this.selectedText);
         
         this.showLoading();
+        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel...';
 
         try {
             const response = await fetch('/api/instagram-image', {
@@ -456,25 +527,118 @@ class AITextEditor {
             const data = await response.json();
 
             if (data.success && data.result) {
-                this.showInstagramModal(data);
+                await this.createInstagramSlides(data);
             } else {
-                this.showError(data.error || 'Chyba při generování Instagram postu');
+                this.showError(data.error || 'Chyba při generování Instagram carousel');
             }
         } catch (error) {
-            console.error('Instagram image generation failed:', error);
-            this.showError('Chyba při generování obrázku: ' + error.message);
+            console.error('Instagram carousel generation failed:', error);
+            this.showError('Chyba při generování carousel: ' + error.message);
         } finally {
             this.hideLoading();
         }
     }
 
-    showInstagramModal(data) {
-        // Zobraz jednoduchý alert místo složitého modalu
-        const fullText = `${data.result}\n\n${data.hashtags}`;
+    async createInstagramSlides(data) {
+        const slide1Canvas = document.createElement('canvas');
+        const slide2Canvas = document.createElement('canvas');
         
-        if (confirm(`Instagram post vygenerován!\n\n${fullText}\n\nChcete vložit text do editoru?`)) {
-            this.insertAIResult(fullText, 'instagram');
+        slide1Canvas.width = 1080;
+        slide1Canvas.height = 1350;
+        slide2Canvas.width = 1080;
+        slide2Canvas.height = 1350;
+        
+        const ctx1 = slide1Canvas.getContext('2d');
+        const ctx2 = slide2Canvas.getContext('2d');
+        
+        await this.createSlide1(ctx1, data);
+        this.createSlide2(ctx2, data);
+        this.downloadSlides(slide1Canvas, slide2Canvas, data);
+    }
+
+    async createSlide1(ctx, data) {
+        document.getElementById('loadingText').textContent = 'Generuji první slide s AI obrázkem...';
+        
+        try {
+            if (data.backgroundImageUrl) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        console.log('AI image failed to load, using gradient');
+                        this.imageGenerator.createGradientBackground(ctx);
+                        resolve();
+                    };
+                    img.src = data.backgroundImageUrl;
+                });
+            } else {
+                this.imageGenerator.createGradientBackground(ctx);
+            }
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            this.imageGenerator.addTitleToSlide(ctx, data.title || data.result.substring(0, 50));
+            
+        } catch (error) {
+            console.error('Error creating slide 1:', error);
+            this.imageGenerator.createGradientBackground(ctx);
+            this.imageGenerator.addTitleToSlide(ctx, data.title || data.result.substring(0, 50));
         }
+    }
+
+    createSlide2(ctx, data) {
+        document.getElementById('loadingText').textContent = 'Generuji druhý slide s textem...';
+        
+        this.imageGenerator.createAbstractBackground(ctx);
+        this.imageGenerator.addTextToSlide(ctx, data.result);
+    }
+
+    downloadSlides(slide1Canvas, slide2Canvas, data) {
+        document.getElementById('loadingText').textContent = 'Připravuji ke stažení...';
+        
+        const link1 = document.createElement('a');
+        link1.download = 'instagram-slide-1-image.png';
+        link1.href = slide1Canvas.toDataURL('image/png');
+        link1.click();
+
+        setTimeout(() => {
+            const link2 = document.createElement('a');
+            link2.download = 'instagram-slide-2-text.png';
+            link2.href = slide2Canvas.toDataURL('image/png');
+            link2.click();
+            
+            if (data.hashtags) {
+                navigator.clipboard.writeText(data.hashtags).then(() => {
+                    this.showNotification('Instagram carousel slides staženy! Hashtags zkopírovány do schránky.');
+                });
+            } else {
+                this.showNotification('Instagram carousel slides staženy!');
+            }
+            
+            setTimeout(() => {
+                alert(`Instagram Carousel vytvořen! 🎉
+
+📥 Staženy 2 slides:
+• Slide 1: AI obrázek s nadpisem
+• Slide 2: Text na moderním pozadí
+
+📋 Hashtags zkopírovány do schránky
+
+📱 Jak zveřejnit na Instagramu:
+1. Otevři Instagram aplikaci
+2. Klikni na + pro nový příspěvek
+3. Vyber oba stažené obrázky (v pořadí)
+4. Vlož hashtags ze schránky jako popis
+5. Zveřejni carousel!`);
+            }, 1000);
+            
+        }, 1000);
     }
 
     async processAIAction(action, customPrompt = '') {
@@ -573,6 +737,7 @@ class AITextEditor {
         
         this.selectedText = '';
         this.autoSave();
+        this.updateWordCount();
         
         console.log('Text successfully inserted');
     }
@@ -639,13 +804,14 @@ class AITextEditor {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #4a90e2;
+            background: var(--accent);
             color: white;
             padding: 12px 20px;
             border-radius: 6px;
             z-index: 4000;
             font-weight: 500;
-            font-size: 14px;
+            font-size: 13px;
+            box-shadow: var(--shadow);
         `;
         
         document.body.appendChild(notification);
@@ -653,7 +819,6 @@ class AITextEditor {
     }
 }
 
-// Inicializace aplikace
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing app...');
     new AITextEditor();
