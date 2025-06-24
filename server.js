@@ -126,58 +126,6 @@ app.post('/api/generate-image', async (req, res) => {
       }
     }
 
-    // Pokus 3: Pokud máme Perplexity, zkusíme získat lepší prompt a pak použít OpenAI
-    if (!imageUrl && process.env.PERPLEXITY_API_KEY && process.env.OPENAI_API_KEY) {
-      try {
-        console.log('Enhancing prompt via Perplexity...');
-        
-        const enhancedPromptResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
-          model: 'llama-3.1-sonar-small-128k-online',
-          messages: [
-            { 
-              role: 'system', 
-              content: 'You are an expert at creating detailed, artistic prompts for AI image generation. Create a detailed, visual prompt in English that will produce a high-quality image.' 
-            },
-            { 
-              role: 'user', 
-              content: `Enhance this prompt for AI image generation: "${prompt}". Make it more detailed and artistic while keeping the core concept.` 
-            }
-          ],
-          temperature: 0.8,
-          max_tokens: 200
-        }, {
-          headers: {
-            'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000
-        });
-
-        const enhancedPrompt = enhancedPromptResponse.data.choices[0].message.content.trim();
-        console.log('Enhanced prompt:', enhancedPrompt);
-
-        const enhancedImageResponse = await axios.post('https://api.openai.com/v1/images/generations', {
-          prompt: enhancedPrompt,
-          n: 1,
-          size: '1024x1024'
-        }, {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 60000
-        });
-
-        if (enhancedImageResponse.data.data?.[0]?.url) {
-          imageUrl = enhancedImageResponse.data.data[0].url;
-          generationMethod = 'perplexity-enhanced-openai';
-          console.log('Image generated via Perplexity-enhanced OpenAI:', imageUrl);
-        }
-      } catch (enhancedError) {
-        console.log('Perplexity-enhanced generation failed:', enhancedError.message);
-      }
-    }
-
     // Pokud se nepodařilo vygenerovat obrázek, použij placeholder
     if (!imageUrl) {
       console.log('All AI image generation methods failed, using placeholder');
@@ -218,7 +166,6 @@ app.post('/api/post-to-instagram', async (req, res) => {
 
     const fullCaption = `${caption}\n\n${hashtags}`;
     
-    // Místo skutečného postování připravíme data pro manuální použití
     res.json({
       success: true,
       message: 'Instagram obsah je připraven ke stažení. Můžete ho manuálně zveřejnit na Instagramu.',
@@ -577,7 +524,6 @@ app.post('/api/perplexity', async (req, res) => {
     let statusCode = 500;
 
     if (error.response) {
-      // Server odpověděl s chybovým kódem
       statusCode = error.response.status;
       switch (error.response.status) {
         case 401:
@@ -596,10 +542,8 @@ app.post('/api/perplexity', async (req, res) => {
           errorMessage = error.response.data?.error?.message || `HTTP ${error.response.status}`;
       }
     } else if (error.request) {
-      // Požadavek byl odeslán, ale nedošla odpověď
       errorMessage = 'Timeout nebo síťová chyba';
     } else {
-      // Chyba při sestavování požadavku
       errorMessage = error.message;
     }
 
