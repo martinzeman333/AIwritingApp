@@ -80,21 +80,21 @@ class InstagramImageGenerator {
     // OPRAVA: Nadpis umístěný ve spodní části s tmavým pozadím
     addTitleToSlide(ctx, title) {
         // Nastavení fontu - menší než dříve
-        ctx.font = 'bold 60px Arial, sans-serif'; // Zmenšeno z 90px na 60px
+        ctx.font = 'bold 60px Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
+        ctx.textBaseline = 'bottom'; // OPRAVA: Změněno z 'middle' na 'bottom'
 
         const maxWidth = ctx.canvas.width * 0.85;
         const lines = this.wrapText(ctx, title, maxWidth);
-        const lineHeight = 75; // Zmenšeno z 110px na 75px
+        const lineHeight = 75;
         
-        // OPRAVA: Umístění ve spodní části podle search results [5]
+        // OPRAVA: Umístění ve spodní části
         const bottomPadding = 60;
         const textHeight = lines.length * lineHeight;
-        const backgroundHeight = textHeight + 40; // Padding pro pozadí
+        const backgroundHeight = textHeight + 40;
         
         // Vytvoř tmavé pozadí pro text
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Tmavé pozadí s průhledností
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(0, ctx.canvas.height - backgroundHeight - bottomPadding, ctx.canvas.width, backgroundHeight + bottomPadding);
         
         // Nastavení stylu textu
@@ -105,7 +105,7 @@ class InstagramImageGenerator {
 
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 6; // Zmenšeno z 10px na 6px
+        ctx.lineWidth = 6;
 
         // Výpočet pozice textu ve spodní části
         const startY = ctx.canvas.height - bottomPadding - (lines.length - 1) * lineHeight;
@@ -692,11 +692,11 @@ class AITextEditor {
     async createPreviewSlide1(ctx) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        console.log('🖼️ Creating preview slide 1 with bottom title...');
+        console.log('🎮 Creating preview slide 1 with bottom title (PIXEL ART)...');
         
         try {
             if (this.currentInstagramPost?.backgroundImageUrl) {
-                console.log('🖼️ Loading background image...');
+                console.log('🎮 Loading pixel art background image...');
                 
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
@@ -707,7 +707,7 @@ class AITextEditor {
                     img.onload = () => {
                         if (!resolved) {
                             resolved = true;
-                            console.log('✅ Background image loaded successfully');
+                            console.log('✅ Pixel art background image loaded successfully');
                             ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
                             resolve(true);
                         }
@@ -716,7 +716,7 @@ class AITextEditor {
                     img.onerror = (error) => {
                         if (!resolved) {
                             resolved = true;
-                            console.log('❌ Background image failed to load, using gradient');
+                            console.log('❌ Pixel art background image failed to load, using gradient');
                             this.imageGenerator.createGradientBackground(ctx);
                             resolve(false);
                         }
@@ -725,7 +725,7 @@ class AITextEditor {
                     setTimeout(() => {
                         if (!resolved) {
                             resolved = true;
-                            console.log('⏰ Image loading timeout, using gradient');
+                            console.log('⏰ Pixel art image loading timeout, using gradient');
                             this.imageGenerator.createGradientBackground(ctx);
                             resolve(false);
                         }
@@ -742,13 +742,13 @@ class AITextEditor {
             // OPRAVA: Přidej nadpis s menším fontem ve spodní části s tmavým pozadím
             if (this.currentInstagramPost?.title) {
                 // Menší font pro preview
-                ctx.font = 'bold 18px Arial, sans-serif'; // Menší pro preview
+                ctx.font = 'bold 18px Arial, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom';
+                ctx.textBaseline = 'bottom'; // OPRAVA: Změněno na bottom
 
                 const maxWidth = ctx.canvas.width * 0.85;
                 const lines = this.imageGenerator.wrapText(ctx, this.currentInstagramPost.title, maxWidth);
-                const lineHeight = 22; // Menší pro preview
+                const lineHeight = 22;
                 
                 // Výpočet pozice ve spodní části
                 const bottomPadding = 15;
@@ -784,7 +784,7 @@ class AITextEditor {
                 ctx.shadowOffsetY = 0;
             }
             
-            console.log('✅ Preview slide 1 created with bottom title');
+            console.log('✅ Preview slide 1 created with bottom title (PIXEL ART)');
             
         } catch (error) {
             console.error('❌ Error creating preview slide 1:', error);
@@ -829,7 +829,7 @@ class AITextEditor {
         if (!newPrompt) return;
 
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Regeneruji komixovou ilustraci...';
+        document.getElementById('loadingText').textContent = 'Regeneruji pixel art ilustraci...';
 
         try {
             const response = await fetch('/api/generate-image', {
@@ -838,18 +838,18 @@ class AITextEditor {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    prompt: `${newPrompt}, comic book art style, vibrant colors, cartoon illustration, graphic novel style, detailed comic book drawing, professional comic art`
+                    prompt: `${newPrompt}, pixel art style, 16-bit retro game style, crisp pixel work, vibrant colors, isometric perspective, pixelated, 8-bit aesthetic`
                 })
             });
 
             const data = await response.json();
             
             if (data.success && data.imageUrl) {
-                console.log('🎨 New image generated:', data.imageUrl);
+                console.log('🎮 New pixel art image generated:', data.imageUrl);
                 this.currentInstagramPost.backgroundImageUrl = data.imageUrl;
                 this.currentInstagramPost.imageDescription = newPrompt;
                 await this.updateInstagramPreview();
-                this.showNotification(`Komixová ilustrace regenerována (${data.generationMethod})`);
+                this.showNotification(`Pixel art ilustrace regenerována (${data.generationMethod})`);
             } else {
                 this.showError('Chyba při regeneraci obrázku');
             }
@@ -1259,9 +1259,9 @@ class AITextEditor {
         await this.processAIAction('custom', prompt);
     }
 
-    // Instagram carousel funkce
+    // OPRAVA: Instagram carousel funkce s pixel art stylem
     async processInstagramImage() {
-        console.log('📸 Processing Instagram carousel for text:', this.selectedText);
+        console.log('🎮 Processing Instagram carousel with PIXEL ART style for text:', this.selectedText);
         
         if (!this.selectedText) {
             this.showError('Musíte vybrat text pro vytvoření Instagram carousel');
@@ -1269,7 +1269,7 @@ class AITextEditor {
         }
         
         this.showLoading();
-        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s komixovou ilustrací...';
+        document.getElementById('loadingText').textContent = 'Generuji Instagram carousel s pixel art ilustrací...';
 
         try {
             const response = await fetch('/api/instagram-image', {
@@ -1303,7 +1303,7 @@ class AITextEditor {
     }
 
     async showInstagramPreview(data) {
-        console.log('📸 Showing Instagram preview with data:', data);
+        console.log('🎮 Showing Instagram preview with PIXEL ART data:', data);
         
         this.currentInstagramPost = {
             id: null,
@@ -1315,7 +1315,7 @@ class AITextEditor {
             timestamp: null
         };
 
-        console.log('🖼️ Background image URL set to:', data.backgroundImageUrl);
+        console.log('🎮 Pixel art background image URL set to:', data.backgroundImageUrl);
 
         const instagramText = document.getElementById('instagramText');
         const instagramHashtags = document.getElementById('instagramHashtags');
@@ -1327,7 +1327,7 @@ class AITextEditor {
 
         this.showInstagramSidebar();
         await this.updateInstagramPreview();
-        this.showNotification('Instagram carousel vygenerován s nadpisem ve spodní části!');
+        this.showNotification('Instagram carousel vygenerován s pixel art stylem a nadpisem ve spodní části!');
     }
 
     async processAIAction(action, customPrompt = '') {
@@ -1514,24 +1514,24 @@ document.addEventListener('DOMContentLoaded', () => {
     new AITextEditor();
 });
 
-// Debug funkce
-window.testImageLoading = function() {
-    console.log('🧪 Testing image loading...');
+// Debug funkce pro testování pixel art
+window.testPixelArtCarousel = function() {
+    console.log('🎮 Testing pixel art Instagram carousel...');
     
     if (globalEditor) {
-        globalEditor.testImageLoading();
+        globalEditor.selectedText = 'Test text pro pixel art Instagram carousel';
+        globalEditor.processInstagramImage();
+        console.log('✅ Pixel art Instagram carousel test triggered');
     } else {
         console.error('❌ Global editor not found');
     }
 };
 
-window.testInstagramCarousel = function() {
-    console.log('🧪 Testing Instagram carousel...');
+window.testImageLoading = function() {
+    console.log('🧪 Testing image loading...');
     
     if (globalEditor) {
-        globalEditor.selectedText = 'Test text pro Instagram carousel';
-        globalEditor.processInstagramImage();
-        console.log('✅ Instagram carousel test triggered');
+        globalEditor.testImageLoading();
     } else {
         console.error('❌ Global editor not found');
     }
