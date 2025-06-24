@@ -286,9 +286,43 @@ h1 {
 
 .image-container img {
     max-width: 100%;
-    max-height: 60vh;
+    max-height: 50vh;
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.instagram-content {
+    padding: 20px 24px;
+    border-top: 1px solid #30363d;
+}
+
+.text-section, .hashtags-section {
+    margin-bottom: 16px;
+}
+
+.text-section label, .hashtags-section label {
+    display: block;
+    margin-bottom: 8px;
+    color: #f0f6fc;
+    font-weight: 500;
+}
+
+.text-section textarea, .hashtags-section textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 12px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #e6edf3;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    outline: none;
+}
+
+.hashtags-section textarea {
+    min-height: 60px;
 }
 
 .image-modal-actions {
@@ -333,10 +367,12 @@ h1 {
     .image-modal-content {
         margin: 20px;
         max-width: calc(100vw - 40px);
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
     }
     
     .image-container img {
-        max-height: 50vh;
+        max-height: 40vh;
     }
     
     .image-modal-actions {
