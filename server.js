@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// AI Image generation pouze přes ChatGPT
+// OPRAVA: ChatGPT endpoint - bez bezpečnostních filtrů
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -64,7 +64,7 @@ app.post('/api/generate-image', async (req, res) => {
       });
     }
 
-    console.log('🎮 Generating PIXEL ART image for prompt:', prompt);
+    console.log('🎮 Generating image for original prompt:', prompt);
 
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({
@@ -73,73 +73,25 @@ app.post('/api/generate-image', async (req, res) => {
       });
     }
 
-    // Čištění promptu od markdown a speciálních znaků
+    // OPRAVA: Pouze základní čištění, bez nahrazování obsahu
     let cleanPrompt = prompt
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
       .replace(/#/g, '')
       .replace(/_/g, '')
-      .replace(/---/g, '')
-      .replace(/:/g, '')
-      .replace(/"/g, '')
-      .replace(/'/g, '')
-      .replace(/\[/g, '')
-      .replace(/\]/g, '')
-      .replace(/\(/g, '')
-      .replace(/\)/g, '')
-      .replace(/\{/g, '')
-      .replace(/\}/g, '')
-      .replace(/\|/g, '')
-      .replace(/\\/g, '')
-      .replace(/\//g, '')
-      .replace(/\+/g, '')
-      .replace(/=/g, '')
-      .replace(/~/g, '')
-      .replace(/`/g, '')
-      .replace(/\^/g, '')
-      .replace(/%/g, '')
-      .replace(/&/g, 'and')
-      .replace(/\$/g, '')
-      .replace(/@/g, '')
-      .replace(/!/g, '')
-      .replace(/\?/g, '')
-      .replace(/</g, '')
-      .replace(/>/g, '')
-      .replace(/;/g, '')
-      .replace(/\./g, '')
-      .replace(/,/g, '')
-      .replace(/\s+/g, ' ')
       .trim();
 
-    // Bezpečnostní filtry pro OpenAI
-    const problematicWords = [
-      'trump', 'biden', 'putin', 'president', 'politician', 'politik',
-      'war', 'attack', 'bomb', 'weapon', 'gun', 'violence', 'kill',
-      'útok', 'válka', 'bomba', 'zbraň', 'násilí', 'zabít', 'smrt',
-      'nuclear', 'jaderný', 'military', 'army', 'soldier', 'voják',
-      'terrorist', 'terorista', 'explosion', 'výbuch', 'blood', 'krev'
-    ];
-    
-    const lowerPrompt = cleanPrompt.toLowerCase();
-    const hasProblematicWord = problematicWords.some(word => 
-      lowerPrompt.includes(word.toLowerCase())
-    );
-    
-    if (hasProblematicWord) {
-      console.log('⚠️ Using safe fallback prompt due to problematic content');
-      cleanPrompt = 'geometric abstract pattern';
-    }
-    
-    const pixelArtPrompt = cleanPrompt.includes('pixel art') 
+    // OPRAVA: Bez bezpečnostních filtrů - používá se původní prompt
+    const finalPrompt = cleanPrompt.includes('pixel art') || cleanPrompt.includes('8-bit') || cleanPrompt.includes('16-bit')
       ? cleanPrompt 
-      : `${cleanPrompt}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
+      : `${cleanPrompt}, pixel art style, 8-bit aesthetic`;
     
-    console.log('🎮 Using safe pixel art prompt:', pixelArtPrompt);
+    console.log('🎮 Using original prompt:', finalPrompt);
     
     try {
       const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
         model: 'dall-e-3',
-        prompt: pixelArtPrompt,
+        prompt: finalPrompt,
         n: 1,
         size: '1024x1024',
         quality: 'hd',
@@ -154,13 +106,14 @@ app.post('/api/generate-image', async (req, res) => {
 
       if (openaiResponse.data.data?.[0]?.url) {
         const imageUrl = openaiResponse.data.data[0].url;
-        console.log('🎮 Pixel art image generated via OpenAI DALL-E 3:', imageUrl);
+        console.log('🎮 Image generated with original prompt:', imageUrl);
         
         res.json({
           success: true,
           imageUrl: imageUrl,
           prompt: prompt,
-          generationMethod: 'openai-dalle3-pixel-art',
+          finalPrompt: finalPrompt,
+          generationMethod: 'openai-dalle3-original',
           timestamp: new Date().toISOString()
         });
       } else {
@@ -170,11 +123,11 @@ app.post('/api/generate-image', async (req, res) => {
       console.log('❌ OpenAI DALL-E 3 failed:', openaiError.response?.data || openaiError.message);
       
       try {
-        console.log('🔄 Trying simple geometric pixel art as fallback...');
+        console.log('🔄 Trying fallback with simplified prompt...');
         
         const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
-          prompt: 'geometric abstract pattern, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, simple shapes, blocky visuals, 8-bit aesthetic',
+          prompt: `${cleanPrompt}, digital art, high quality`,
           n: 1,
           size: '1024x1024',
           quality: 'standard',
@@ -189,12 +142,13 @@ app.post('/api/generate-image', async (req, res) => {
 
         if (fallbackResponse.data.data?.[0]?.url) {
           const imageUrl = fallbackResponse.data.data[0].url;
-          console.log('🎮 Fallback geometric pixel art generated:', imageUrl);
+          console.log('🎮 Fallback image generated:', imageUrl);
           
           res.json({
             success: true,
             imageUrl: imageUrl,
-            prompt: 'geometric abstract pattern (fallback)',
+            prompt: prompt,
+            finalPrompt: `${cleanPrompt}, digital art, high quality`,
             generationMethod: 'openai-dalle3-fallback',
             timestamp: new Date().toISOString()
           });
@@ -206,7 +160,7 @@ app.post('/api/generate-image', async (req, res) => {
         
         res.status(500).json({
           success: false,
-          error: 'Nepodařilo se vygenerovat pixel art obrázek: ' + (openaiError.response?.data?.error?.message || openaiError.message)
+          error: 'Nepodařilo se vygenerovat obrázek: ' + (openaiError.response?.data?.error?.message || openaiError.message)
         });
       }
     }
@@ -220,7 +174,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// OPRAVA: Gemini API endpoint pro generování obrázků
+// OPRAVA: Gemini API endpoint - bez bezpečnostních filtrů
 app.post('/api/generate-image-gemini', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -239,47 +193,24 @@ app.post('/api/generate-image-gemini', async (req, res) => {
       });
     }
 
-    console.log('🔮 Generating image with Gemini for prompt:', prompt);
+    console.log('🔮 Generating image with Gemini for original prompt:', prompt);
 
-    // Čištění promptu
+    // OPRAVA: Pouze základní čištění, bez nahrazování obsahu
     let cleanPrompt = prompt
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
       .replace(/#/g, '')
       .replace(/_/g, '')
-      .replace(/---/g, '')
-      .replace(/:/g, '')
-      .replace(/"/g, '')
-      .replace(/'/g, '')
       .trim();
 
-    // Bezpečnostní filtry
-    const problematicWords = [
-      'trump', 'biden', 'putin', 'president', 'politician', 'politik',
-      'war', 'attack', 'bomb', 'weapon', 'gun', 'violence', 'kill',
-      'útok', 'válka', 'bomba', 'zbraň', 'násilí', 'zabít', 'smrt',
-      'nuclear', 'jaderný', 'military', 'army', 'soldier', 'voják',
-      'terrorist', 'terorista', 'explosion', 'výbuch', 'blood', 'krev'
-    ];
-    
-    const lowerPrompt = cleanPrompt.toLowerCase();
-    const hasProblematicWord = problematicWords.some(word => 
-      lowerPrompt.includes(word.toLowerCase())
-    );
-    
-    if (hasProblematicWord) {
-      console.log('⚠️ Using safe fallback prompt for Gemini');
-      cleanPrompt = 'beautiful abstract art pattern';
-    }
+    // OPRAVA: Bez bezpečnostních filtrů - používá se původní prompt
+    console.log('🔮 Using original prompt:', cleanPrompt);
 
     try {
-      // Správný Gemini API endpoint pro text generation
-      console.log('🔮 Trying Gemini text enhancement...');
-      
       const geminiResponse = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         contents: [{
           parts: [{
-            text: `Create a detailed, artistic image description for: "${cleanPrompt}". Make it vivid, colorful, and visually appealing for AI image generation. Focus on visual details, lighting, composition, and artistic style. Maximum 200 words.`
+            text: `Create a detailed image description for: "${cleanPrompt}". Make it vivid and visually appealing for AI image generation.`
           }]
         }],
         generationConfig: {
@@ -302,7 +233,7 @@ app.post('/api/generate-image-gemini', async (req, res) => {
         // Použij vylepšený prompt pro DALL-E
         const dalleResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
-          prompt: enhancedPrompt.substring(0, 1000), // DALL-E má limit 1000 znaků
+          prompt: enhancedPrompt.substring(0, 1000),
           n: 1,
           size: '1024x1024',
           quality: 'hd',
@@ -317,7 +248,7 @@ app.post('/api/generate-image-gemini', async (req, res) => {
 
         if (dalleResponse.data.data?.[0]?.url) {
           const imageUrl = dalleResponse.data.data[0].url;
-          console.log('🔮 Image generated via Gemini + DALL-E:', imageUrl);
+          console.log('🔮 Image generated with original prompt via Gemini + DALL-E:', imageUrl);
           
           res.json({
             success: true,
@@ -334,16 +265,14 @@ app.post('/api/generate-image-gemini', async (req, res) => {
         throw new Error('No valid response from Gemini');
       }
     } catch (geminiError) {
-      console.log('❌ Gemini enhancement failed:', geminiError.response?.status, geminiError.response?.data || geminiError.message);
+      console.log('❌ Gemini enhancement failed, using direct DALL-E with original prompt...');
       
-      // Lepší fallback na přímé DALL-E s vylepšeným promptem
-      console.log('🔄 Using direct DALL-E with enhanced prompt as fallback...');
-      
-      const enhancedPrompt = `${cleanPrompt}, highly detailed, artistic, vibrant colors, professional photography, cinematic lighting, masterpiece quality, 8k resolution`;
+      // OPRAVA: Fallback používá původní prompt
+      const directPrompt = `${cleanPrompt}, high quality, detailed, artistic`;
       
       const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
         model: 'dall-e-3',
-        prompt: enhancedPrompt,
+        prompt: directPrompt,
         n: 1,
         size: '1024x1024',
         quality: 'hd',
@@ -358,18 +287,18 @@ app.post('/api/generate-image-gemini', async (req, res) => {
 
       if (fallbackResponse.data.data?.[0]?.url) {
         const imageUrl = fallbackResponse.data.data[0].url;
-        console.log('🔮 Fallback image generated via DALL-E:', imageUrl);
+        console.log('🔮 Image generated with original prompt via direct DALL-E:', imageUrl);
         
         res.json({
           success: true,
           imageUrl: imageUrl,
           prompt: prompt,
-          enhancedPrompt: enhancedPrompt,
-          generationMethod: 'dalle3-enhanced-fallback',
+          enhancedPrompt: directPrompt,
+          generationMethod: 'dalle3-direct-original',
           timestamp: new Date().toISOString()
         });
       } else {
-        throw new Error('Both Gemini and DALL-E fallback failed');
+        throw new Error('Both Gemini and DALL-E failed');
       }
     }
 
@@ -442,7 +371,7 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 3. Vygeneruj BEZPEČNÝ popis pro pixel art
+    // 3. Vygeneruj NEUTRÁLNÍ popis pro pixel art
     const imageDescriptionResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
       model: 'llama-3.1-sonar-small-128k-online',
       messages: [
@@ -488,10 +417,10 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 5. Vyčisti mainSubject a vytvoř bezpečný pixel art prompt
+    // 5. Vyčisti mainSubject a vytvoř pixel art prompt
     let mainSubject = imageDescriptionResponse.data.choices[0].message.content.trim();
     
-    // Agresivní čištění markdown a speciálních znaků
+    // Základní čištění
     mainSubject = mainSubject
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
@@ -505,54 +434,20 @@ app.post('/api/instagram-image', async (req, res) => {
       .replace(/\]/g, '')
       .replace(/\(/g, '')
       .replace(/\)/g, '')
-      .replace(/\{/g, '')
-      .replace(/\}/g, '')
-      .replace(/\|/g, '')
-      .replace(/\\/g, '')
-      .replace(/\//g, '')
-      .replace(/\+/g, '')
-      .replace(/=/g, '')
-      .replace(/~/g, '')
-      .replace(/`/g, '')
-      .replace(/\^/g, '')
-      .replace(/%/g, '')
-      .replace(/&/g, 'and')
-      .replace(/\$/g, '')
-      .replace(/@/g, '')
-      .replace(/!/g, '')
-      .replace(/\?/g, '')
-      .replace(/</g, '')
-      .replace(/>/g, '')
-      .replace(/;/g, '')
-      .replace(/\./g, '')
-      .replace(/,/g, '')
       .replace(/\s+/g, ' ')
       .trim();
     
-    // Bezpečnostní filtry pro OpenAI
-    const problematicWords = [
-      'trump', 'biden', 'putin', 'president', 'politician', 'politik',
-      'war', 'attack', 'bomb', 'weapon', 'gun', 'violence', 'kill',
-      'útok', 'válka', 'bomba', 'zbraň', 'násilí', 'zabít', 'smrt',
-      'nuclear', 'jaderný', 'military', 'army', 'soldier', 'voják',
-      'terrorist', 'terorista', 'explosion', 'výbuch', 'blood', 'krev'
-    ];
-    
-    const lowerSubject = mainSubject.toLowerCase();
-    const hasProblematicWord = problematicWords.some(word => 
-      lowerSubject.includes(word.toLowerCase())
-    );
-    
-    if (hasProblematicWord || !mainSubject || mainSubject.length < 3) {
-      console.log('⚠️ Using safe fallback subject due to problematic content');
+    // Fallback pokud je mainSubject prázdný
+    if (!mainSubject || mainSubject.length < 3) {
+      console.log('⚠️ Using safe fallback subject due to empty content');
       mainSubject = 'geometric abstract pattern';
     }
     
-    // Vytvoř bezpečný pixel art prompt
+    // Vytvoř pixel art prompt
     const pixelArtPrompt = `${mainSubject}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic, digital art`;
     
     console.log('🎮 Safe mainSubject:', mainSubject);
-    console.log('🎮 Safe pixel art prompt:', pixelArtPrompt);
+    console.log('🎮 Pixel art prompt:', pixelArtPrompt);
     
     let backgroundImageUrl = null;
     
@@ -564,7 +459,7 @@ app.post('/api/instagram-image', async (req, res) => {
     }
 
     try {
-      console.log('🎮 Generating safe pixel art with ChatGPT...');
+      console.log('🎮 Generating pixel art with ChatGPT...');
       
       const imageResponse = await axios.post('https://api.openai.com/v1/images/generations', {
         model: 'dall-e-3',
@@ -583,7 +478,7 @@ app.post('/api/instagram-image', async (req, res) => {
 
       if (imageResponse.data.data?.[0]?.url) {
         backgroundImageUrl = imageResponse.data.data[0].url;
-        console.log('🎮 Safe pixel art illustration generated successfully:', backgroundImageUrl);
+        console.log('🎮 Pixel art illustration generated successfully:', backgroundImageUrl);
       } else {
         throw new Error('No image URL in response');
       }
@@ -650,11 +545,11 @@ app.post('/api/instagram-image', async (req, res) => {
     let hashtags = hashtagsResponse.data.choices[0].message.content.trim();
     hashtags = hashtags.split(/\s+/).filter(tag => tag.startsWith('#')).join(' ');
     
-    console.log('🎮 Generated SAFE Instagram carousel with ChatGPT PIXEL ART:', {
+    console.log('🎮 Generated Instagram carousel with ChatGPT PIXEL ART:', {
       title: title,
       text: slideText,
       hashtags: hashtags,
-      safeMainSubject: mainSubject,
+      mainSubject: mainSubject,
       pixelArtPrompt: pixelArtPrompt,
       backgroundImage: backgroundImageUrl
     });
@@ -909,6 +804,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔮 Gemini API: ${process.env.GEMINI_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🎮 Instagram: POUZE ChatGPT pixel art obrázky - žádné picsum.photos!`);
+  console.log(`🎮 Image Generation: Používá původní prompty bez filtrů!`);
   console.log(`📱 Instagram Editor: Nový carousel editor s Gemini podporou`);
 });
