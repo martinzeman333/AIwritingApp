@@ -197,6 +197,17 @@ body {
     font-size: 0.7rem;
 }
 
+.no-articles {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.no-articles p {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
 /* Main Content */
 .main-content {
     flex: 1;
@@ -574,6 +585,16 @@ body {
     margin-top: 0.5rem;
 }
 
+.image-upload {
+    margin-top: 0.5rem;
+}
+
+.image-generation .btn,
+.image-upload .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
 /* Buttons */
 .btn {
     padding: 0.5rem 1rem;
@@ -841,4 +862,65 @@ body {
         width: 250px;
         height: 312px;
     }
+}
+
+/* Print Styles */
+@media print {
+    .sidebar,
+    .carousels-sidebar,
+    .editor-header,
+    .slides-toolbar,
+    .modal,
+    .loading-overlay {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .slides-container {
+        padding: 0;
+        height: auto;
+        overflow: visible;
+        color: black;
+        background: white;
+    }
+    
+    body {
+        background: white;
+        color: black;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .spinner {
+        animation: none;
+        border-top-color: var(--primary);
+    }
+}
+
+/* Focus styles for accessibility */
+.btn:focus,
+.tab-btn:focus,
+.section-item:focus,
+.nav-btn:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    box-shadow: 0 0 0 3px rgba(0,102,204,0.2);
 }
