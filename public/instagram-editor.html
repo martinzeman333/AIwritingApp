@@ -7,110 +7,180 @@
     <link rel="stylesheet" href="instagram-editor.css">
 </head>
 <body>
-    <div class="instagram-editor">
-        <!-- Header -->
-        <div class="editor-header">
-            <div class="header-left">
-                <button id="backToMainBtn" class="btn-secondary">
-                    ← Zpět na hlavní editor
-                </button>
-                <h1>Instagram Carousel Editor</h1>
+    <div class="app">
+        <!-- Left Sidebar - Library -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Library</h2>
             </div>
-            <div class="header-right">
-                <button id="saveCarouselBtn" class="btn-primary">Uložit carousel</button>
-                <button id="loadCarouselBtn" class="btn-secondary">Načíst carousel</button>
-                <button id="exportCarouselBtn" class="btn-success">Export slides</button>
+            
+            <div class="sidebar-section">
+                <div class="section-item active" data-filter="all">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="9" cy="9" r="2"/>
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                    </svg>
+                    All Carousels
+                </div>
+                <div class="section-item" data-filter="recent">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12,6 12,12 16,14"/>
+                    </svg>
+                    Last 7 Days
+                </div>
+                <div class="section-item" data-filter="drafts">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14,2 14,8 20,8"/>
+                    </svg>
+                    Drafts
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Projects</h3>
+                <div class="section-item" id="newCarouselBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Carousel...
+                </div>
+                <div class="section-item" id="backToMainBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m12 19-7-7 7-7"/>
+                        <path d="M19 12H5"/>
+                    </svg>
+                    Back to Editor
+                </div>
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="editor-content">
-            <!-- Slides Overview -->
-            <div class="slides-sidebar">
-                <div class="slides-header">
-                    <h3>Slides (0/10)</h3>
-                    <button id="addSlideBtn" class="btn-add">+ Nový slide</button>
+        <!-- Middle Sidebar - Carousels List -->
+        <div class="carousels-sidebar">
+            <div class="carousels-header">
+                <h3>Instagram Carousels</h3>
+                <div class="header-info">
+                    <span class="notification-badge">This group features carousel creation tools to help you create engaging Instagram content.</span>
                 </div>
-                <div id="slidesList" class="slides-list">
-                    <!-- Slides budou přidávány dynamicky -->
+            </div>
+            
+            <div id="carouselsList" class="carousels-list">
+                <!-- Carousels will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Main Content - Editor -->
+        <div class="main-content">
+            <div class="editor-header">
+                <div class="editor-title">
+                    <h1 id="carouselTitle">New Instagram Carousel</h1>
+                    <div class="slides-count">0 Slides</div>
+                </div>
+                <div class="editor-actions">
+                    <button id="saveCarouselBtn" class="btn btn-primary">Save</button>
+                    <button id="exportCarouselBtn" class="btn btn-success">Export</button>
                 </div>
             </div>
 
-            <!-- Slide Editor -->
-            <div class="slide-editor">
-                <div class="slide-preview">
-                    <div id="currentSlidePreview" class="slide-canvas">
-                        <div class="empty-slide">
-                            <p>Vyberte slide nebo vytvořte nový</p>
+            <!-- Slides Preview Area -->
+            <div class="slides-preview-area">
+                <div class="slides-container" id="slidesContainer">
+                    <div class="empty-state">
+                        <div class="empty-icon">📱</div>
+                        <h3>Create Your First Slide</h3>
+                        <p>Click "Add Slide" to start building your Instagram carousel</p>
+                        <button id="addFirstSlideBtn" class="btn btn-primary">Add Slide</button>
+                    </div>
+                </div>
+                
+                <div class="slides-toolbar">
+                    <button id="addSlideBtn" class="btn btn-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Slide
+                    </button>
+                    <div class="slides-navigation">
+                        <button id="prevSlideBtn" class="nav-btn" disabled>‹</button>
+                        <span id="slideCounter">0 / 0</span>
+                        <button id="nextSlideBtn" class="nav-btn" disabled>›</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide Editor Panel -->
+            <div class="slide-editor-panel" id="slideEditorPanel" style="display: none;">
+                <div class="editor-tabs">
+                    <button class="tab-btn active" data-tab="content">Content</button>
+                    <button class="tab-btn" data-tab="design">Design</button>
+                    <button class="tab-btn" data-tab="image">Background</button>
+                </div>
+
+                <div class="tab-content active" id="contentTab">
+                    <div class="form-group">
+                        <label>Slide Text</label>
+                        <div class="text-editor">
+                            <div class="text-toolbar">
+                                <button class="format-btn" data-format="bold">B</button>
+                                <button class="format-btn" data-format="italic">I</button>
+                                <select id="textSize">
+                                    <option value="16px">Small</option>
+                                    <option value="20px" selected>Medium</option>
+                                    <option value="24px">Large</option>
+                                    <option value="28px">X-Large</option>
+                                </select>
+                                <input type="color" id="textColorPicker" value="#ffffff">
+                            </div>
+                            <textarea id="slideText" placeholder="Enter your slide text..."></textarea>
                         </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Text Position</label>
+                        <select id="textPosition">
+                            <option value="center">Center</option>
+                            <option value="top">Top</option>
+                            <option value="bottom">Bottom</option>
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="slide-controls">
-                    <!-- Text Editor -->
-                    <div class="control-section">
-                        <h4>Text obsah</h4>
-                        <div class="text-toolbar">
-                            <button id="boldBtn" class="format-btn">B</button>
-                            <button id="italicBtn" class="format-btn">I</button>
-                            <button id="underlineBtn" class="format-btn">U</button>
-                            <select id="fontSize">
-                                <option value="14px">14px</option>
-                                <option value="16px">16px</option>
-                                <option value="18px" selected>18px</option>
-                                <option value="20px">20px</option>
-                                <option value="24px">24px</option>
-                                <option value="28px">28px</option>
-                            </select>
-                            <input type="color" id="textColor" value="#ffffff">
-                        </div>
-                        <div id="slideTextEditor" class="slide-text-editor" contenteditable="true" 
-                             placeholder="Napište text pro tento slide...">
-                        </div>
+                <div class="tab-content" id="designTab">
+                    <div class="form-group">
+                        <label>Background Color</label>
+                        <input type="color" id="backgroundColorPicker" value="#667eea">
                     </div>
-
-                    <!-- Background Image -->
-                    <div class="control-section">
-                        <h4>Pozadí</h4>
-                        <div class="background-controls">
-                            <input type="text" id="imagePrompt" placeholder="Popište obrázek pro pozadí..." 
-                                   class="prompt-input">
-                            <div class="image-buttons">
-                                <button id="generateChatGPTBtn" class="btn-chatgpt">
-                                    🤖 ChatGPT
-                                </button>
-                                <button id="generateGeminiBtn" class="btn-gemini">
-                                    ✨ Gemini
-                                </button>
-                            </div>
-                            <div class="background-options">
-                                <button id="removeBackgroundBtn" class="btn-danger">Odebrat pozadí</button>
-                                <input type="color" id="backgroundColor" value="#667eea">
-                                <label for="backgroundColor">Barva pozadí</label>
-                            </div>
-                        </div>
+                    
+                    <div class="form-group">
+                        <label>Text Background Opacity</label>
+                        <input type="range" id="textOpacity" min="0" max="100" value="70">
+                        <span id="opacityValue">70%</span>
                     </div>
+                </div>
 
-                    <!-- Slide Settings -->
-                    <div class="control-section">
-                        <h4>Nastavení slide</h4>
-                        <div class="slide-settings">
-                            <label>
-                                Pozice textu:
-                                <select id="textPosition">
-                                    <option value="center">Střed</option>
-                                    <option value="top">Nahoře</option>
-                                    <option value="bottom">Dole</option>
-                                    <option value="left">Vlevo</option>
-                                    <option value="right">Vpravo</option>
-                                </select>
-                            </label>
-                            <label>
-                                Průhlednost pozadí textu:
-                                <input type="range" id="textBackgroundOpacity" min="0" max="100" value="70">
-                                <span id="opacityValue">70%</span>
-                            </label>
-                        </div>
+                <div class="tab-content" id="imageTab">
+                    <div class="form-group">
+                        <label>Image Prompt</label>
+                        <input type="text" id="imagePrompt" placeholder="Describe the background image...">
+                    </div>
+                    
+                    <div class="image-generation">
+                        <button id="generateChatGPTBtn" class="btn btn-chatgpt">
+                            🤖 Generate with ChatGPT
+                        </button>
+                        <button id="generateGeminiBtn" class="btn btn-gemini">
+                            ✨ Generate with Gemini
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button id="removeImageBtn" class="btn btn-danger">Remove Background Image</button>
                     </div>
                 </div>
             </div>
@@ -120,23 +190,11 @@
     <!-- Modals -->
     <div id="saveModal" class="modal hidden">
         <div class="modal-content">
-            <h3>Uložit carousel</h3>
-            <input type="text" id="carouselName" placeholder="Název carousel..." class="modal-input">
+            <h3>Save Carousel</h3>
+            <input type="text" id="carouselNameInput" placeholder="Carousel name...">
             <div class="modal-buttons">
-                <button id="confirmSaveCarousel" class="btn-primary">Uložit</button>
-                <button id="cancelSaveCarousel" class="btn-secondary">Zrušit</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="loadModal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Načíst carousel</h3>
-            <div id="carouselsList" class="carousels-list">
-                <!-- Saved carousels budou přidávány dynamicky -->
-            </div>
-            <div class="modal-buttons">
-                <button id="cancelLoadCarousel" class="btn-secondary">Zrušit</button>
+                <button id="confirmSaveBtn" class="btn btn-primary">Save</button>
+                <button id="cancelSaveBtn" class="btn btn-secondary">Cancel</button>
             </div>
         </div>
     </div>
@@ -144,7 +202,7 @@
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="loading-content">
             <div class="spinner"></div>
-            <p id="loadingText">Generuji obrázek...</p>
+            <p id="loadingText">Processing...</p>
         </div>
     </div>
 
