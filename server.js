@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// OPRAVA: ChatGPT endpoint - bez bezpečnostních filtrů
+// OPRAVA: ChatGPT endpoint - používá přesný prompt
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -64,7 +64,7 @@ app.post('/api/generate-image', async (req, res) => {
       });
     }
 
-    console.log('🎮 Generating image for original prompt:', prompt);
+    console.log('🎮 Generating image with EXACT prompt:', prompt);
 
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({
@@ -73,25 +73,13 @@ app.post('/api/generate-image', async (req, res) => {
       });
     }
 
-    // OPRAVA: Pouze základní čištění, bez nahrazování obsahu
-    let cleanPrompt = prompt
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
-      .replace(/#/g, '')
-      .replace(/_/g, '')
-      .trim();
-
-    // OPRAVA: Bez bezpečnostních filtrů - používá se původní prompt
-    const finalPrompt = cleanPrompt.includes('pixel art') || cleanPrompt.includes('8-bit') || cleanPrompt.includes('16-bit')
-      ? cleanPrompt 
-      : `${cleanPrompt}, pixel art style, 8-bit aesthetic`;
-    
-    console.log('🎮 Using original prompt:', finalPrompt);
+    // OPRAVA: Žádné úpravy promptu - používá se přesně jak je zadaný
+    console.log('🎮 Using EXACT prompt without modifications:', prompt);
     
     try {
       const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
         model: 'dall-e-3',
-        prompt: finalPrompt,
+        prompt: prompt, // Přesný prompt bez úprav
         n: 1,
         size: '1024x1024',
         quality: 'hd',
@@ -106,14 +94,14 @@ app.post('/api/generate-image', async (req, res) => {
 
       if (openaiResponse.data.data?.[0]?.url) {
         const imageUrl = openaiResponse.data.data[0].url;
-        console.log('🎮 Image generated with original prompt:', imageUrl);
+        console.log('🎮 Image generated with EXACT prompt:', imageUrl);
         
         res.json({
           success: true,
           imageUrl: imageUrl,
-          prompt: prompt,
-          finalPrompt: finalPrompt,
-          generationMethod: 'openai-dalle3-original',
+          prompt: prompt, // Původní prompt
+          usedPrompt: prompt, // Skutečně použitý prompt
+          generationMethod: 'openai-dalle3-exact',
           timestamp: new Date().toISOString()
         });
       } else {
@@ -122,47 +110,10 @@ app.post('/api/generate-image', async (req, res) => {
     } catch (openaiError) {
       console.log('❌ OpenAI DALL-E 3 failed:', openaiError.response?.data || openaiError.message);
       
-      try {
-        console.log('🔄 Trying fallback with simplified prompt...');
-        
-        const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
-          model: 'dall-e-3',
-          prompt: `${cleanPrompt}, digital art, high quality`,
-          n: 1,
-          size: '1024x1024',
-          quality: 'standard',
-          style: 'vivid'
-        }, {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 60000
-        });
-
-        if (fallbackResponse.data.data?.[0]?.url) {
-          const imageUrl = fallbackResponse.data.data[0].url;
-          console.log('🎮 Fallback image generated:', imageUrl);
-          
-          res.json({
-            success: true,
-            imageUrl: imageUrl,
-            prompt: prompt,
-            finalPrompt: `${cleanPrompt}, digital art, high quality`,
-            generationMethod: 'openai-dalle3-fallback',
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          throw new Error('Fallback also failed');
-        }
-      } catch (fallbackError) {
-        console.log('❌ Fallback also failed:', fallbackError.message);
-        
-        res.status(500).json({
-          success: false,
-          error: 'Nepodařilo se vygenerovat obrázek: ' + (openaiError.response?.data?.error?.message || openaiError.message)
-        });
-      }
+      res.status(500).json({
+        success: false,
+        error: 'Nepodařilo se vygenerovat obrázek: ' + (openaiError.response?.data?.error?.message || openaiError.message)
+      });
     }
 
   } catch (error) {
@@ -174,7 +125,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// OPRAVA: Gemini API endpoint - bez bezpečnostních filtrů
+// OPRAVA: Gemini endpoint - přeskakuje Gemini enhancement a používá přímé DALL-E
 app.post('/api/generate-image-gemini', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -186,93 +137,15 @@ app.post('/api/generate-image-gemini', async (req, res) => {
       });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({
-        success: false,
-        error: 'Gemini API klíč není nastaven'
-      });
-    }
-
-    console.log('🔮 Generating image with Gemini for original prompt:', prompt);
-
-    // OPRAVA: Pouze základní čištění, bez nahrazování obsahu
-    let cleanPrompt = prompt
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
-      .replace(/#/g, '')
-      .replace(/_/g, '')
-      .trim();
-
-    // OPRAVA: Bez bezpečnostních filtrů - používá se původní prompt
-    console.log('🔮 Using original prompt:', cleanPrompt);
+    console.log('🔮 Generating image with Gemini using EXACT prompt:', prompt);
 
     try {
-      const geminiResponse = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-        contents: [{
-          parts: [{
-            text: `Create a detailed image description for: "${cleanPrompt}". Make it vivid and visually appealing for AI image generation.`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 200
-        }
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000
-      });
-
-      if (geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        const enhancedPrompt = geminiResponse.data.candidates[0].content.parts[0].text.trim();
-        console.log('🔮 Gemini enhanced prompt:', enhancedPrompt.substring(0, 100) + '...');
-        
-        // Použij vylepšený prompt pro DALL-E
-        const dalleResponse = await axios.post('https://api.openai.com/v1/images/generations', {
-          model: 'dall-e-3',
-          prompt: enhancedPrompt.substring(0, 1000),
-          n: 1,
-          size: '1024x1024',
-          quality: 'hd',
-          style: 'vivid'
-        }, {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 120000
-        });
-
-        if (dalleResponse.data.data?.[0]?.url) {
-          const imageUrl = dalleResponse.data.data[0].url;
-          console.log('🔮 Image generated with original prompt via Gemini + DALL-E:', imageUrl);
-          
-          res.json({
-            success: true,
-            imageUrl: imageUrl,
-            prompt: prompt,
-            enhancedPrompt: enhancedPrompt,
-            generationMethod: 'gemini-enhanced-dalle3',
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          throw new Error('No image URL in DALL-E response');
-        }
-      } else {
-        throw new Error('No valid response from Gemini');
-      }
-    } catch (geminiError) {
-      console.log('❌ Gemini enhancement failed, using direct DALL-E with original prompt...');
+      // OPRAVA: Pošli prompt přímo do DALL-E bez Gemini "enhancement"
+      console.log('🔮 Skipping Gemini enhancement, using direct DALL-E with exact prompt...');
       
-      // OPRAVA: Fallback používá původní prompt
-      const directPrompt = `${cleanPrompt}, high quality, detailed, artistic`;
-      
-      const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
+      const dalleResponse = await axios.post('https://api.openai.com/v1/images/generations', {
         model: 'dall-e-3',
-        prompt: directPrompt,
+        prompt: prompt, // Přesný původní prompt
         n: 1,
         size: '1024x1024',
         quality: 'hd',
@@ -285,28 +158,34 @@ app.post('/api/generate-image-gemini', async (req, res) => {
         timeout: 60000
       });
 
-      if (fallbackResponse.data.data?.[0]?.url) {
-        const imageUrl = fallbackResponse.data.data[0].url;
-        console.log('🔮 Image generated with original prompt via direct DALL-E:', imageUrl);
+      if (dalleResponse.data.data?.[0]?.url) {
+        const imageUrl = dalleResponse.data.data[0].url;
+        console.log('🔮 Image generated with EXACT prompt via direct DALL-E:', imageUrl);
         
         res.json({
           success: true,
           imageUrl: imageUrl,
-          prompt: prompt,
-          enhancedPrompt: directPrompt,
-          generationMethod: 'dalle3-direct-original',
+          prompt: prompt, // Původní prompt
+          usedPrompt: prompt, // Skutečně použitý prompt
+          generationMethod: 'dalle3-direct-exact-no-gemini',
           timestamp: new Date().toISOString()
         });
       } else {
-        throw new Error('Both Gemini and DALL-E failed');
+        throw new Error('DALL-E failed to generate image');
       }
+    } catch (error) {
+      console.error('❌ Direct DALL-E generation failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Chyba při generování obrázku: ' + error.message
+      });
     }
 
   } catch (error) {
-    console.error('❌ Gemini image generation error:', error);
+    console.error('❌ Image generation error:', error);
     res.status(500).json({
       success: false,
-      error: 'Chyba při generování obrázku přes Gemini: ' + error.message
+      error: 'Chyba při generování obrázku: ' + error.message
     });
   }
 });
@@ -804,6 +683,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔮 Gemini API: ${process.env.GEMINI_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🎮 Image Generation: Používá původní prompty bez filtrů!`);
-  console.log(`📱 Instagram Editor: Nový carousel editor s Gemini podporou`);
+  console.log(`🎮 Image Generation: Používá PŘESNÉ prompty bez úprav!`);
+  console.log(`📱 Instagram Editor: Gemini tlačítko nyní používá přímé DALL-E`);
 });
