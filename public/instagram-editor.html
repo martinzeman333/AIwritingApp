@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Carousel Editor</title>
+    <link rel="stylesheet" href="instagram-editor.css">
+</head>
+<body>
+    <div class="instagram-editor">
+        <!-- Header -->
+        <div class="editor-header">
+            <div class="header-left">
+                <button id="backToMainBtn" class="btn-secondary">
+                    ← Zpět na hlavní editor
+                </button>
+                <h1>Instagram Carousel Editor</h1>
+            </div>
+            <div class="header-right">
+                <button id="saveCarouselBtn" class="btn-primary">Uložit carousel</button>
+                <button id="loadCarouselBtn" class="btn-secondary">Načíst carousel</button>
+                <button id="exportCarouselBtn" class="btn-success">Export slides</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="editor-content">
+            <!-- Slides Overview -->
+            <div class="slides-sidebar">
+                <div class="slides-header">
+                    <h3>Slides (0/10)</h3>
+                    <button id="addSlideBtn" class="btn-add">+ Nový slide</button>
+                </div>
+                <div id="slidesList" class="slides-list">
+                    <!-- Slides budou přidávány dynamicky -->
+                </div>
+            </div>
+
+            <!-- Slide Editor -->
+            <div class="slide-editor">
+                <div class="slide-preview">
+                    <div id="currentSlidePreview" class="slide-canvas">
+                        <div class="empty-slide">
+                            <p>Vyberte slide nebo vytvořte nový</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slide-controls">
+                    <!-- Text Editor -->
+                    <div class="control-section">
+                        <h4>Text obsah</h4>
+                        <div class="text-toolbar">
+                            <button id="boldBtn" class="format-btn">B</button>
+                            <button id="italicBtn" class="format-btn">I</button>
+                            <button id="underlineBtn" class="format-btn">U</button>
+                            <select id="fontSize">
+                                <option value="14px">14px</option>
+                                <option value="16px">16px</option>
+                                <option value="18px" selected>18px</option>
+                                <option value="20px">20px</option>
+                                <option value="24px">24px</option>
+                                <option value="28px">28px</option>
+                            </select>
+                            <input type="color" id="textColor" value="#ffffff">
+                        </div>
+                        <div id="slideTextEditor" class="slide-text-editor" contenteditable="true" 
+                             placeholder="Napište text pro tento slide...">
+                        </div>
+                    </div>
+
+                    <!-- Background Image -->
+                    <div class="control-section">
+                        <h4>Pozadí</h4>
+                        <div class="background-controls">
+                            <input type="text" id="imagePrompt" placeholder="Popište obrázek pro pozadí..." 
+                                   class="prompt-input">
+                            <div class="image-buttons">
+                                <button id="generateChatGPTBtn" class="btn-chatgpt">
+                                    🤖 ChatGPT
+                                </button>
+                                <button id="generateGeminiBtn" class="btn-gemini">
+                                    ✨ Gemini
+                                </button>
+                            </div>
+                            <div class="background-options">
+                                <button id="removeBackgroundBtn" class="btn-danger">Odebrat pozadí</button>
+                                <input type="color" id="backgroundColor" value="#667eea">
+                                <label for="backgroundColor">Barva pozadí</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide Settings -->
+                    <div class="control-section">
+                        <h4>Nastavení slide</h4>
+                        <div class="slide-settings">
+                            <label>
+                                Pozice textu:
+                                <select id="textPosition">
+                                    <option value="center">Střed</option>
+                                    <option value="top">Nahoře</option>
+                                    <option value="bottom">Dole</option>
+                                    <option value="left">Vlevo</option>
+                                    <option value="right">Vpravo</option>
+                                </select>
+                            </label>
+                            <label>
+                                Průhlednost pozadí textu:
+                                <input type="range" id="textBackgroundOpacity" min="0" max="100" value="70">
+                                <span id="opacityValue">70%</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="saveModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Uložit carousel</h3>
+            <input type="text" id="carouselName" placeholder="Název carousel..." class="modal-input">
+            <div class="modal-buttons">
+                <button id="confirmSaveCarousel" class="btn-primary">Uložit</button>
+                <button id="cancelSaveCarousel" class="btn-secondary">Zrušit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Načíst carousel</h3>
+            <div id="carouselsList" class="carousels-list">
+                <!-- Saved carousels budou přidávány dynamicky -->
+            </div>
+            <div class="modal-buttons">
+                <button id="cancelLoadCarousel" class="btn-secondary">Zrušit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loadingText">Generuji obrázek...</p>
+        </div>
+    </div>
+
+    <script src="instagram-editor.js"></script>
+</body>
+</html>
