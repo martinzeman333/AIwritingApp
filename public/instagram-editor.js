@@ -48,6 +48,7 @@ class InstagramCarouselEditor {
         this.imagePrompt = document.getElementById('imagePrompt');
         this.generateChatGPTBtn = document.getElementById('generateChatGPTBtn');
         this.generateGeminiBtn = document.getElementById('generateGeminiBtn');
+        this.generateReplicateBtn = document.getElementById('generateReplicateBtn');
         this.removeImageBtn = document.getElementById('removeImageBtn');
         
         // Carousels list
@@ -90,9 +91,10 @@ class InstagramCarouselEditor {
             this.updateCurrentSlide();
         });
         
-        // Image generation - OPRAVA: Přesné prompty
+        // Image generation - všechny tři možnosti
         this.generateChatGPTBtn?.addEventListener('click', () => this.generateImage('chatgpt'));
         this.generateGeminiBtn?.addEventListener('click', () => this.generateImage('gemini'));
+        this.generateReplicateBtn?.addEventListener('click', () => this.generateImage('replicate'));
         this.removeImageBtn?.addEventListener('click', () => this.removeBackgroundImage());
         
         // Tabs
@@ -318,7 +320,7 @@ class InstagramCarouselEditor {
         }
     }
     
-    // OPRAVA: Generování obrázků s přesným promptem
+    // Generování obrázků s podporou všech tří API
     async generateImage(provider) {
         const prompt = this.imagePrompt?.value?.trim();
         if (!prompt) {
@@ -328,19 +330,36 @@ class InstagramCarouselEditor {
         
         console.log(`🎨 Generating image with ${provider} using EXACT prompt: "${prompt}"`);
         
-        this.showLoading(`Generating image with ${provider.toUpperCase()}...`);
+        let loadingText = `Generating image with ${provider.toUpperCase()}...`;
+        if (provider === 'replicate') {
+            loadingText += ' (No restrictions - may take 30-60 seconds)';
+        }
+        
+        this.showLoading(loadingText);
         
         try {
-            const endpoint = provider === 'chatgpt' ? '/api/generate-image' : '/api/generate-image-gemini';
+            let endpoint;
+            switch(provider) {
+                case 'chatgpt':
+                    endpoint = '/api/generate-image';
+                    break;
+                case 'gemini':
+                    endpoint = '/api/generate-image-gemini';
+                    break;
+                case 'replicate':
+                    endpoint = '/api/generate-image-replicate';
+                    break;
+                default:
+                    endpoint = '/api/generate-image';
+            }
             
-            // OPRAVA: Posílá se přesně zadaný prompt bez přidávání textu
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    prompt: prompt // Pouze původní prompt, bez přidávání
+                    prompt: prompt
                 })
             });
             
@@ -351,8 +370,14 @@ class InstagramCarouselEditor {
                     this.slides[this.currentSlideIndex].backgroundImage = data.imageUrl;
                     this.updateSlidesDisplay();
                 }
-                this.showNotification(`Image generated with ${provider.toUpperCase()}`);
-                console.log(`✅ Image generated successfully with exact prompt: "${prompt}"`);
+                
+                let successMessage = `Image generated with ${provider.toUpperCase()}`;
+                if (data.restrictions) {
+                    successMessage += ` (${data.restrictions})`;
+                }
+                
+                this.showNotification(successMessage);
+                console.log(`✅ Image generated successfully with: "${prompt}"`);
             } else {
                 throw new Error(data.error || 'Failed to generate image');
             }
@@ -722,7 +747,4 @@ document.addEventListener('DOMContentLoaded', () => {
 window.debugCarousel = function() {
     console.log('🐛 Current carousel state:', {
         slides: editor?.slides,
-        currentSlideIndex: editor?.currentSlideIndex,
-        currentCarouselId: editor?.currentCarouselId
-    });
-};
+        currentSlideIndex: editor?.
