@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// OPRAVA: ChatGPT endpoint - používá nejlepší dostupný model DALL-E 3
+// ChatGPT endpoint - používá nejlepší dostupný model DALL-E 3
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -165,7 +165,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// OPRAVA: Gemini endpoint - používá stabilní Gemini 2.0 Flash
+// OPRAVA: Gemini endpoint s vypnutými safety filtry
 app.post('/api/generate-image-gemini', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -177,7 +177,7 @@ app.post('/api/generate-image-gemini', async (req, res) => {
       });
     }
 
-    console.log('🔮 Generating image with Gemini 2.0 Flash using EXACT prompt:', prompt);
+    console.log('🔮 Generating image with Gemini 2.0 Flash using EXACT prompt (safety filters DISABLED):', prompt);
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
@@ -187,8 +187,7 @@ app.post('/api/generate-image-gemini', async (req, res) => {
     }
 
     try {
-      // OPRAVA: Používá stabilní Gemini 2.0 Flash model
-      console.log('🔮 Using stable Gemini 2.0 Flash for prompt enhancement...');
+      console.log('🔮 Using Gemini 2.0 Flash with DISABLED safety filters...');
       
       const geminiResponse = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         contents: [{
@@ -196,8 +195,16 @@ app.post('/api/generate-image-gemini', async (req, res) => {
             text: `Create a detailed, vivid image description based on this exact prompt: "${prompt}". Enhance it for AI image generation while keeping the core concept intact. Make it visually rich and specific.`
           }]
         }],
+        // OPRAVA: Vypnuté safety filtry podle search results
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' }
+        ],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.9, // Vyšší kreativita pro lepší portréty
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 300
@@ -211,7 +218,7 @@ app.post('/api/generate-image-gemini', async (req, res) => {
 
       if (geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text) {
         const enhancedPrompt = geminiResponse.data.candidates[0].content.parts[0].text.trim();
-        console.log('🔮 Gemini 2.0 Flash enhanced prompt:', enhancedPrompt.substring(0, 100) + '...');
+        console.log('🔮 Gemini 2.0 Flash enhanced prompt (no safety filters):', enhancedPrompt.substring(0, 100) + '...');
         
         // Použij vylepšený prompt pro DALL-E 3 HD
         const dalleResponse = await axios.post('https://api.openai.com/v1/images/generations', {
@@ -231,17 +238,18 @@ app.post('/api/generate-image-gemini', async (req, res) => {
 
         if (dalleResponse.data.data?.[0]?.url) {
           const imageUrl = dalleResponse.data.data[0].url;
-          console.log('🔮 HD Image generated via Gemini 2.0 Flash + DALL-E 3:', imageUrl);
+          console.log('🔮 HD Image generated via Gemini 2.0 Flash (no safety filters) + DALL-E 3:', imageUrl);
           
           res.json({
             success: true,
             imageUrl: imageUrl,
             prompt: prompt,
             enhancedPrompt: enhancedPrompt,
-            generationMethod: 'gemini-2.0-flash-dalle3-hd',
+            generationMethod: 'gemini-2.0-flash-no-safety-dalle3-hd',
             geminiModel: 'gemini-2.0-flash',
             dalleModel: 'dall-e-3',
             quality: 'hd',
+            safetyFilters: 'disabled',
             timestamp: new Date().toISOString()
           });
         } else {
@@ -790,6 +798,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔮 Gemini API: ${process.env.GEMINI_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🎮 Image Generation: DALL-E 3 HD + Gemini 2.0 Flash (stable)!`);
-  console.log(`📱 Instagram Editor: Stabilní Gemini 2.0 Flash model`);
+  console.log(`🎮 Image Generation: DALL-E 3 HD + Gemini 2.0 Flash (SAFETY FILTERS DISABLED)!`);
+  console.log(`📱 Instagram Editor: Gemini bez bezpečnostních filtrů pro lepší výsledky`);
 });
