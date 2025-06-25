@@ -52,8 +52,8 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// ChatGPT endpoint - používá nejlepší dostupný model DALL-E 3
-app.post('/api/generate-image', async (req, res) => {
+// NOVÉ: Google Imagen 4 přes Replicate
+app.post('/api/generate-image-imagen4', async (req, res) => {
   try {
     const { prompt } = req.body;
     
@@ -64,255 +64,7 @@ app.post('/api/generate-image', async (req, res) => {
       });
     }
 
-    console.log('🎮 Generating image with DALL-E 3 HD using EXACT prompt:', prompt);
-
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        success: false,
-        error: 'OpenAI API klíč není nastaven'
-      });
-    }
-
-    console.log('🎮 Using EXACT prompt without modifications:', prompt);
-    
-    try {
-      const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
-        model: 'dall-e-3',
-        prompt: prompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'hd',
-        style: 'vivid'
-      }, {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 120000
-      });
-
-      if (openaiResponse.data.data?.[0]?.url) {
-        const imageUrl = openaiResponse.data.data[0].url;
-        console.log('🎮 HD Image generated with EXACT prompt via DALL-E 3:', imageUrl);
-        
-        res.json({
-          success: true,
-          imageUrl: imageUrl,
-          prompt: prompt,
-          usedPrompt: prompt,
-          generationMethod: 'openai-dalle3-hd-exact',
-          model: 'dall-e-3',
-          quality: 'hd',
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        throw new Error('No image URL in OpenAI response');
-      }
-    } catch (openaiError) {
-      console.log('❌ OpenAI DALL-E 3 HD failed:', openaiError.response?.data || openaiError.message);
-      
-      try {
-        console.log('🔄 Trying DALL-E 3 with standard quality as fallback...');
-        
-        const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
-          model: 'dall-e-3',
-          prompt: prompt,
-          n: 1,
-          size: '1024x1024',
-          quality: 'standard',
-          style: 'vivid'
-        }, {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 60000
-        });
-
-        if (fallbackResponse.data.data?.[0]?.url) {
-          const imageUrl = fallbackResponse.data.data[0].url;
-          console.log('🎮 Standard quality image generated:', imageUrl);
-          
-          res.json({
-            success: true,
-            imageUrl: imageUrl,
-            prompt: prompt,
-            usedPrompt: prompt,
-            generationMethod: 'openai-dalle3-standard-fallback',
-            model: 'dall-e-3',
-            quality: 'standard',
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          throw new Error('Fallback also failed');
-        }
-      } catch (fallbackError) {
-        console.log('❌ Fallback also failed:', fallbackError.message);
-        
-        res.status(500).json({
-          success: false,
-          error: 'Nepodařilo se vygenerovat obrázek: ' + (openaiError.response?.data?.error?.message || openaiError.message)
-        });
-      }
-    }
-
-  } catch (error) {
-    console.error('❌ Image generation error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Chyba při generování obrázku: ' + error.message
-    });
-  }
-});
-
-// NOVÉ: Gemini 2.0 Flash nativní generování obrázků
-app.post('/api/generate-image-gemini', async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    
-    if (!prompt) {
-      return res.status(400).json({
-        success: false,
-        error: 'Prompt je povinný'
-      });
-    }
-
-    console.log('🔮 Generating image with Gemini 2.0 Flash NATIVE image generation:', prompt);
-
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({
-        success: false,
-        error: 'Gemini API klíč není nastaven'
-      });
-    }
-
-    try {
-      // NOVÉ: Gemini 2.0 Flash nativní generování podle search results
-      console.log('🔮 Using Gemini 2.0 Flash native image generation...');
-      
-      const geminiResponse = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-        contents: [{
-          parts: [{
-            text: prompt // Přesný prompt bez úprav
-          }]
-        }],
-        generationConfig: {
-          responseModalities: ["TEXT", "IMAGE"], // Nativní generování obrázků
-          temperature: 0.9,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 300
-        },
-        // Vypnuté safety filtry pro lepší výsledky
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' }
-        ]
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 60000
-      });
-
-      if (geminiResponse.data.candidates?.[0]?.content?.parts) {
-        const parts = geminiResponse.data.candidates[0].content.parts;
-        let textResponse = '';
-        let imageData = null;
-
-        // Projdi všechny části odpovědi
-        for (const part of parts) {
-          if (part.text) {
-            textResponse += part.text;
-          } else if (part.inlineData) {
-            imageData = part.inlineData.data;
-            console.log('🔮 Gemini 2.0 Flash generated native image successfully!');
-          }
-        }
-
-        if (imageData) {
-          // Konvertuj base64 na URL (můžeš uložit na disk nebo použít data URL)
-          const imageUrl = `data:image/png;base64,${imageData}`;
-          
-          res.json({
-            success: true,
-            imageUrl: imageUrl,
-            prompt: prompt,
-            textResponse: textResponse,
-            generationMethod: 'gemini-2.0-flash-native',
-            model: 'gemini-2.0-flash-exp',
-            quality: 'native',
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          throw new Error('No image data in Gemini response');
-        }
-      } else {
-        throw new Error('No valid response from Gemini 2.0 Flash');
-      }
-    } catch (geminiError) {
-      console.log('❌ Gemini 2.0 Flash native failed, using DALL-E 3 fallback...', geminiError.response?.data || geminiError.message);
-      
-      // Fallback na DALL-E 3
-      const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
-        model: 'dall-e-3',
-        prompt: prompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'hd',
-        style: 'vivid'
-      }, {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 60000
-      });
-
-      if (fallbackResponse.data.data?.[0]?.url) {
-        const imageUrl = fallbackResponse.data.data[0].url;
-        console.log('🔮 Fallback image generated via DALL-E 3:', imageUrl);
-        
-        res.json({
-          success: true,
-          imageUrl: imageUrl,
-          prompt: prompt,
-          usedPrompt: prompt,
-          generationMethod: 'dalle3-fallback-from-gemini',
-          model: 'dall-e-3',
-          quality: 'hd',
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        throw new Error('Both Gemini native and DALL-E 3 failed');
-      }
-    }
-
-  } catch (error) {
-    console.error('❌ Gemini native image generation error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Chyba při generování obrázku přes Gemini native: ' + error.message
-    });
-  }
-});
-
-// NOVÉ: Replicate API pro neomezené generování celebrit a politiků
-app.post('/api/generate-image-replicate', async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    
-    if (!prompt) {
-      return res.status(400).json({
-        success: false,
-        error: 'Prompt je povinný'
-      });
-    }
-
-    console.log('🔄 Generating image with Replicate (NO RESTRICTIONS):', prompt);
+    console.log('🎨 Generating image with Google Imagen 4 via Replicate:', prompt);
 
     if (!process.env.REPLICATE_API_TOKEN) {
       return res.status(500).json({
@@ -322,17 +74,15 @@ app.post('/api/generate-image-replicate', async (req, res) => {
     }
 
     try {
-      // Spusť generování přes Replicate SDXL
+      // Spusť Google Imagen 4 přes Replicate
       const response = await axios.post('https://api.replicate.com/v1/predictions', {
-        version: "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+        version: "google/imagen-4:latest", // Nejnovější verze Google Imagen 4
         input: {
-          prompt: prompt, // Přesný prompt bez filtrování
-          negative_prompt: "blurry, low quality, distorted, deformed",
+          prompt: prompt,
           width: 1024,
           height: 1024,
-          num_inference_steps: 50,
-          guidance_scale: 7.5,
-          scheduler: "K_EULER"
+          num_inference_steps: 30,
+          guidance_scale: 7.5
         }
       }, {
         headers: {
@@ -343,15 +93,15 @@ app.post('/api/generate-image-replicate', async (req, res) => {
       });
 
       const predictionId = response.data.id;
-      console.log('🔄 Replicate prediction started:', predictionId);
+      console.log('🎨 Google Imagen 4 prediction started:', predictionId);
 
-      // Čekej na dokončení (max 2 minuty)
+      // Čekej na dokončení
       let prediction = response.data;
       let attempts = 0;
       const maxAttempts = 60; // 2 minuty
 
       while ((prediction.status === 'starting' || prediction.status === 'processing') && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Čekej 2 sekundy
+        await new Promise(resolve => setTimeout(resolve, 2000));
         attempts++;
 
         const checkResponse = await axios.get(`https://api.replicate.com/v1/predictions/${predictionId}`, {
@@ -362,44 +112,44 @@ app.post('/api/generate-image-replicate', async (req, res) => {
         });
         
         prediction = checkResponse.data;
-        console.log(`🔄 Replicate status (${attempts}/${maxAttempts}):`, prediction.status);
+        console.log(`🎨 Google Imagen 4 status (${attempts}/${maxAttempts}):`, prediction.status);
       }
 
       if (prediction.status === 'succeeded' && prediction.output && prediction.output.length > 0) {
         const imageUrl = prediction.output[0];
-        console.log('🔄 Replicate image generated successfully (NO RESTRICTIONS):', imageUrl);
+        console.log('🎨 Google Imagen 4 image generated successfully:', imageUrl);
         
         res.json({
           success: true,
           imageUrl: imageUrl,
           prompt: prompt,
           usedPrompt: prompt,
-          generationMethod: 'replicate-sdxl-unrestricted',
-          model: 'stability-ai/sdxl',
+          generationMethod: 'google-imagen4-replicate',
+          model: 'google/imagen-4',
           quality: 'high',
           restrictions: 'none',
           timestamp: new Date().toISOString()
         });
       } else if (prediction.status === 'failed') {
-        throw new Error(`Replicate failed: ${prediction.error || 'Unknown error'}`);
+        throw new Error(`Google Imagen 4 failed: ${prediction.error || 'Unknown error'}`);
       } else {
-        throw new Error(`Replicate timeout after ${maxAttempts * 2} seconds`);
+        throw new Error(`Google Imagen 4 timeout after ${maxAttempts * 2} seconds`);
       }
 
     } catch (replicateError) {
-      console.log('❌ Replicate failed:', replicateError.response?.data || replicateError.message);
+      console.log('❌ Google Imagen 4 failed:', replicateError.response?.data || replicateError.message);
       
       res.status(500).json({
         success: false,
-        error: 'Replicate generování selhalo: ' + (replicateError.response?.data?.detail || replicateError.message)
+        error: 'Google Imagen 4 generování selhalo: ' + (replicateError.response?.data?.detail || replicateError.message)
       });
     }
 
   } catch (error) {
-    console.error('❌ Replicate error:', error);
+    console.error('❌ Google Imagen 4 error:', error);
     res.status(500).json({
       success: false,
-      error: 'Chyba při generování přes Replicate: ' + error.message
+      error: 'Chyba při generování přes Google Imagen 4: ' + error.message
     });
   }
 });
@@ -897,6 +647,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔮 Gemini API: ${process.env.GEMINI_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🎮 Image Generation: 3 možnosti - DALL-E 3 HD, Gemini 2.0 Flash Native, Replicate (bez omezení)!`);
-  console.log(`📱 Instagram Editor: Gemini nativní generování + Replicate pro celebrity`);
+  console.log(`🎨 Image Generation: Google Imagen 4 via Replicate (no restrictions)!`);
+  console.log(`📱 Instagram Editor: Google Imagen 4 pro generování obrázků`);
 });
