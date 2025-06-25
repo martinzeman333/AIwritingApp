@@ -76,14 +76,13 @@ app.post('/api/generate-image', async (req, res) => {
     console.log('🎮 Using EXACT prompt without modifications:', prompt);
     
     try {
-      // OPRAVA: Používá nejlepší dostupný model DALL-E 3 s HD kvalitou
       const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
-        model: 'dall-e-3', // Nejlepší dostupný model
-        prompt: prompt, // Přesný prompt bez úprav
+        model: 'dall-e-3',
+        prompt: prompt,
         n: 1,
-        size: '1024x1024', // Nejvyšší dostupné rozlišení pro DALL-E 3
-        quality: 'hd', // Nejvyšší kvalita
-        style: 'vivid' // Nejlepší styl pro živé barvy
+        size: '1024x1024',
+        quality: 'hd',
+        style: 'vivid'
       }, {
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -112,7 +111,6 @@ app.post('/api/generate-image', async (req, res) => {
     } catch (openaiError) {
       console.log('❌ OpenAI DALL-E 3 HD failed:', openaiError.response?.data || openaiError.message);
       
-      // Fallback na standardní kvalitu
       try {
         console.log('🔄 Trying DALL-E 3 with standard quality as fallback...');
         
@@ -121,7 +119,7 @@ app.post('/api/generate-image', async (req, res) => {
           prompt: prompt,
           n: 1,
           size: '1024x1024',
-          quality: 'standard', // Fallback na standardní kvalitu
+          quality: 'standard',
           style: 'vivid'
         }, {
           headers: {
@@ -167,7 +165,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// OPRAVA: Gemini endpoint - používá nejnovější Gemini 2.5 Flash
+// OPRAVA: Gemini endpoint - používá stabilní Gemini 2.0 Flash
 app.post('/api/generate-image-gemini', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -179,7 +177,7 @@ app.post('/api/generate-image-gemini', async (req, res) => {
       });
     }
 
-    console.log('🔮 Generating image with Gemini 2.5 Flash using EXACT prompt:', prompt);
+    console.log('🔮 Generating image with Gemini 2.0 Flash using EXACT prompt:', prompt);
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
@@ -189,10 +187,10 @@ app.post('/api/generate-image-gemini', async (req, res) => {
     }
 
     try {
-      // OPRAVA: Používá nejnovější Gemini 2.5 Flash model
-      console.log('🔮 Using Gemini 2.5 Flash for prompt enhancement...');
+      // OPRAVA: Používá stabilní Gemini 2.0 Flash model
+      console.log('🔮 Using stable Gemini 2.0 Flash for prompt enhancement...');
       
-      const geminiResponse = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      const geminiResponse = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         contents: [{
           parts: [{
             text: `Create a detailed, vivid image description based on this exact prompt: "${prompt}". Enhance it for AI image generation while keeping the core concept intact. Make it visually rich and specific.`
@@ -213,12 +211,12 @@ app.post('/api/generate-image-gemini', async (req, res) => {
 
       if (geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text) {
         const enhancedPrompt = geminiResponse.data.candidates[0].content.parts[0].text.trim();
-        console.log('🔮 Gemini 2.5 Flash enhanced prompt:', enhancedPrompt.substring(0, 100) + '...');
+        console.log('🔮 Gemini 2.0 Flash enhanced prompt:', enhancedPrompt.substring(0, 100) + '...');
         
         // Použij vylepšený prompt pro DALL-E 3 HD
         const dalleResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
-          prompt: enhancedPrompt.substring(0, 1000), // DALL-E má limit 1000 znaků
+          prompt: enhancedPrompt.substring(0, 1000),
           n: 1,
           size: '1024x1024',
           quality: 'hd',
@@ -233,15 +231,15 @@ app.post('/api/generate-image-gemini', async (req, res) => {
 
         if (dalleResponse.data.data?.[0]?.url) {
           const imageUrl = dalleResponse.data.data[0].url;
-          console.log('🔮 HD Image generated via Gemini 2.5 Flash + DALL-E 3:', imageUrl);
+          console.log('🔮 HD Image generated via Gemini 2.0 Flash + DALL-E 3:', imageUrl);
           
           res.json({
             success: true,
             imageUrl: imageUrl,
             prompt: prompt,
             enhancedPrompt: enhancedPrompt,
-            generationMethod: 'gemini-2.5-flash-dalle3-hd',
-            geminiModel: 'gemini-2.5-flash',
+            generationMethod: 'gemini-2.0-flash-dalle3-hd',
+            geminiModel: 'gemini-2.0-flash',
             dalleModel: 'dall-e-3',
             quality: 'hd',
             timestamp: new Date().toISOString()
@@ -250,10 +248,10 @@ app.post('/api/generate-image-gemini', async (req, res) => {
           throw new Error('No image URL in DALL-E response');
         }
       } else {
-        throw new Error('No valid response from Gemini 2.5 Flash');
+        throw new Error('No valid response from Gemini 2.0 Flash');
       }
     } catch (geminiError) {
-      console.log('❌ Gemini 2.5 Flash failed, using direct DALL-E 3 HD with exact prompt...');
+      console.log('❌ Gemini 2.0 Flash failed, using direct DALL-E 3 HD with exact prompt...');
       
       // Fallback na přímé DALL-E 3 HD s původním promptem
       const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
@@ -286,15 +284,15 @@ app.post('/api/generate-image-gemini', async (req, res) => {
           timestamp: new Date().toISOString()
         });
       } else {
-        throw new Error('Both Gemini 2.5 Flash and DALL-E 3 failed');
+        throw new Error('Both Gemini 2.0 Flash and DALL-E 3 failed');
       }
     }
 
   } catch (error) {
-    console.error('❌ Gemini 2.5 Flash image generation error:', error);
+    console.error('❌ Gemini 2.0 Flash image generation error:', error);
     res.status(500).json({
       success: false,
-      error: 'Chyba při generování obrázku přes Gemini 2.5 Flash: ' + error.message
+      error: 'Chyba při generování obrázku přes Gemini 2.0 Flash: ' + error.message
     });
   }
 });
@@ -449,13 +447,12 @@ app.post('/api/instagram-image', async (req, res) => {
     try {
       console.log('🎮 Generating HD pixel art with DALL-E 3...');
       
-      // OPRAVA: Používá DALL-E 3 HD pro nejlepší kvalitu
       const imageResponse = await axios.post('https://api.openai.com/v1/images/generations', {
         model: 'dall-e-3',
         prompt: pixelArtPrompt,
         n: 1,
         size: '1024x1024',
-        quality: 'hd', // HD kvalita pro Instagram
+        quality: 'hd',
         style: 'vivid'
       }, {
         headers: {
@@ -793,6 +790,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔮 Gemini API: ${process.env.GEMINI_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🎮 Image Generation: DALL-E 3 HD + Gemini 2.5 Flash enhancement!`);
-  console.log(`📱 Instagram Editor: Nejlepší dostupné modely pro generování`);
+  console.log(`🎮 Image Generation: DALL-E 3 HD + Gemini 2.0 Flash (stable)!`);
+  console.log(`📱 Instagram Editor: Stabilní Gemini 2.0 Flash model`);
 });
