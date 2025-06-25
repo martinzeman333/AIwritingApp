@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// OPRAVA: AI Image generation s pixel art optimalizací a čištěním markdown
+// OPRAVA: AI Image generation pouze přes ChatGPT - bez fallbacků
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -66,124 +66,121 @@ app.post('/api/generate-image', async (req, res) => {
 
     console.log('🎮 Generating PIXEL ART image for prompt:', prompt);
 
-    let imageUrl = null;
-    let generationMethod = 'none';
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: 'OpenAI API klíč není nastaven'
+      });
+    }
 
-    // OPRAVA: Pokus 1: OpenAI DALL-E 3 s pixel art optimalizací
-    if (process.env.OPENAI_API_KEY && !imageUrl) {
+    // OPRAVA: Čištění promptu od markdown a speciálních znaků
+    let cleanPrompt = prompt
+      .replace(/\*\*/g, '')  // Odstraň **
+      .replace(/\*/g, '')    // Odstraň *
+      .replace(/#/g, '')     // Odstraň #
+      .replace(/_/g, '')     // Odstraň _
+      .replace(/---/g, '')   // Odstraň ---
+      .replace(/:/g, '')     // Odstraň dvojtečky
+      .replace(/"/g, '')     // Odstraň uvozovky
+      .replace(/'/g, '')     // Odstraň apostrofy
+      .replace(/\[/g, '')    // Odstraň [
+      .replace(/\]/g, '')    // Odstraň ]
+      .replace(/\(/g, '')    // Odstraň (
+      .replace(/\)/g, '')    // Odstraň )
+      .replace(/\{/g, '')    // Odstraň {
+      .replace(/\}/g, '')    // Odstraň }
+      .replace(/\|/g, '')    // Odstraň |
+      .replace(/\\/g, '')    // Odstraň \
+      .replace(/\//g, '')    // Odstraň /
+      .replace(/\+/g, '')    // Odstraň +
+      .replace(/=/g, '')     // Odstraň =
+      .replace(/~/g, '')     // Odstraň ~
+      .replace(/`/g, '')     // Odstraň `
+      .replace(/\^/g, '')    // Odstraň ^
+      .replace(/%/g, '')     // Odstraň %
+      .replace(/&/g, 'and')  // Nahraď & za and
+      .replace(/\$/g, '')    // Odstraň $
+      .replace(/@/g, '')     // Odstraň @
+      .replace(/!/g, '')     // Odstraň !
+      .replace(/\?/g, '')    // Odstraň ?
+      .replace(/</g, '')     // Odstraň <
+      .replace(/>/g, '')     // Odstraň >
+      .replace(/;/g, '')     // Odstraň ;
+      .replace(/\./g, '')    // Odstraň tečky
+      .replace(/,/g, '')     // Odstraň čárky
+      .replace(/\s+/g, ' ')  // Nahraď více mezer jednou
+      .trim();               // Odstraň mezery na začátku/konci
+
+    // OPRAVA: Bezpečnostní filtry pro OpenAI
+    const problematicWords = [
+      'trump', 'biden', 'putin', 'president', 'politician', 'politik',
+      'war', 'attack', 'bomb', 'weapon', 'gun', 'violence', 'kill',
+      'útok', 'válka', 'bomba', 'zbraň', 'násilí', 'zabít', 'smrt',
+      'nuclear', 'jaderný', 'military', 'army', 'soldier', 'voják',
+      'terrorist', 'terorista', 'explosion', 'výbuch', 'blood', 'krev'
+    ];
+    
+    // Kontrola problematických slov
+    const lowerPrompt = cleanPrompt.toLowerCase();
+    const hasProblematicWord = problematicWords.some(word => 
+      lowerPrompt.includes(word.toLowerCase())
+    );
+    
+    if (hasProblematicWord) {
+      console.log('⚠️ Using safe fallback prompt due to problematic content');
+      cleanPrompt = 'geometric abstract pattern';
+    }
+    
+    const pixelArtPrompt = cleanPrompt.includes('pixel art') 
+      ? cleanPrompt 
+      : `${cleanPrompt}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
+    
+    console.log('🎮 Using safe pixel art prompt:', pixelArtPrompt);
+    
+    try {
+      const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
+        model: 'dall-e-3',
+        prompt: pixelArtPrompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'hd',
+        style: 'vivid'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 120000
+      });
+
+      if (openaiResponse.data.data?.[0]?.url) {
+        const imageUrl = openaiResponse.data.data[0].url;
+        console.log('🎮 Pixel art image generated via OpenAI DALL-E 3:', imageUrl);
+        
+        res.json({
+          success: true,
+          imageUrl: imageUrl,
+          prompt: prompt,
+          generationMethod: 'openai-dalle3-pixel-art',
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw new Error('No image URL in OpenAI response');
+      }
+    } catch (openaiError) {
+      console.log('❌ OpenAI DALL-E 3 failed:', openaiError.response?.data || openaiError.message);
+      
+      // OPRAVA: Pokus o jednodušší prompt jako fallback
       try {
-        console.log('🎮 Trying OpenAI DALL-E 3 with PIXEL ART style...');
+        console.log('🔄 Trying simple geometric pixel art as fallback...');
         
-        // OPRAVA: Vyčisti prompt od markdown značek
-        let cleanPrompt = prompt
-          .replace(/\*\*/g, '')  // Odstraň **
-          .replace(/\*/g, '')    // Odstraň *
-          .replace(/#/g, '')     // Odstraň #
-          .replace(/_/g, '')     // Odstraň _
-          .replace(/---/g, '')   // Odstraň ---
-          .replace(/:/g, '')     // Odstraň dvojtečky
-          .replace(/"/g, '')     // Odstraň uvozovky
-          .replace(/'/g, '')     // Odstraň apostrofy
-          .replace(/\[/g, '')    // Odstraň [
-          .replace(/\]/g, '')    // Odstraň ]
-          .replace(/\(/g, '')    // Odstraň (
-          .replace(/\)/g, '')    // Odstraň )
-          .replace(/\{/g, '')    // Odstraň {
-          .replace(/\}/g, '')    // Odstraň }
-          .replace(/\|/g, '')    // Odstraň |
-          .replace(/\\/g, '')    // Odstraň \
-          .replace(/\//g, '')    // Odstraň /
-          .replace(/\+/g, '')    // Odstraň +
-          .replace(/=/g, '')     // Odstraň =
-          .replace(/~/g, '')     // Odstraň ~
-          .replace(/`/g, '')     // Odstraň `
-          .replace(/\^/g, '')    // Odstraň ^
-          .replace(/%/g, '')     // Odstraň %
-          .replace(/&/g, 'and')  // Nahraď & za and
-          .replace(/\$/g, '')    // Odstraň $
-          .replace(/@/g, '')     // Odstraň @
-          .replace(/!/g, '')     // Odstraň !
-          .replace(/\?/g, '')    // Odstraň ?
-          .replace(/</g, '')     // Odstraň <
-          .replace(/>/g, '')     // Odstraň >
-          .replace(/;/g, '')     // Odstraň ;
-          .replace(/\./g, '')    // Odstraň tečky
-          .replace(/,/g, '')     // Odstraň čárky
-          .replace(/\s+/g, ' ')  // Nahraď více mezer jednou
-          .trim();               // Odstraň mezery na začátku/konci
-        
-        // OPRAVA: Optimalizovaný prompt pro pixel art
-        const pixelArtPrompt = cleanPrompt.includes('pixel art') 
-          ? cleanPrompt 
-          : `${cleanPrompt}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
-        
-        console.log('🎮 Using cleaned pixel art prompt:', pixelArtPrompt);
-        
-        const openaiResponse = await axios.post('https://api.openai.com/v1/images/generations', {
+        const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
-          prompt: pixelArtPrompt,
+          prompt: 'geometric abstract pattern, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, simple shapes, blocky visuals, 8-bit aesthetic',
           n: 1,
           size: '1024x1024',
-          quality: 'hd',
+          quality: 'standard',
           style: 'vivid'
-        }, {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 120000
-        });
-
-        if (openaiResponse.data.data?.[0]?.url) {
-          imageUrl = openaiResponse.data.data[0].url;
-          generationMethod = 'openai-dalle3-pixel-art';
-          console.log('🎮 Pixel art image generated via OpenAI DALL-E 3:', imageUrl);
-        }
-      } catch (openaiError) {
-        console.log('❌ OpenAI DALL-E 3 failed:', openaiError.response?.data || openaiError.message);
-      }
-    }
-
-    // Pokus 2: Stability AI s pixel art stylem
-    if (process.env.STABILITY_API_KEY && !imageUrl) {
-      try {
-        console.log('🎮 Trying Stability AI with pixel art...');
-        
-        const stabilityResponse = await axios.post('https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image', {
-          text_prompts: [{ text: `${prompt}, pixel art style, 16-bit graphics, retro game aesthetic, blocky visuals` }],
-          cfg_scale: 7,
-          height: 1024,
-          width: 1024,
-          samples: 1,
-          steps: 30,
-        }, {
-          headers: {
-            'Authorization': `Bearer ${process.env.STABILITY_API_KEY}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          timeout: 120000
-        });
-
-        if (stabilityResponse.data.artifacts?.[0]?.base64) {
-          imageUrl = `data:image/png;base64,${stabilityResponse.data.artifacts[0].base64}`;
-          generationMethod = 'stability-ai-pixel-art';
-          console.log('🎮 Pixel art image generated via Stability AI');
-        }
-      } catch (stabilityError) {
-        console.log('❌ Stability AI failed:', stabilityError.response?.data || stabilityError.message);
-      }
-    }
-
-    // Pokus 3: Fallback na DALL-E 2 s pixel art
-    if (process.env.OPENAI_API_KEY && !imageUrl) {
-      try {
-        console.log('🎮 Trying OpenAI DALL-E 2 as fallback...');
-        
-        const dalle2Response = await axios.post('https://api.openai.com/v1/images/generations', {
-          prompt: `${prompt}, pixel art style, 8-bit graphics, retro aesthetic, blocky visuals`,
-          n: 1,
-          size: '1024x1024'
         }, {
           headers: {
             'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -192,29 +189,29 @@ app.post('/api/generate-image', async (req, res) => {
           timeout: 60000
         });
 
-        if (dalle2Response.data.data?.[0]?.url) {
-          imageUrl = dalle2Response.data.data[0].url;
-          generationMethod = 'openai-dalle2-pixel-art';
-          console.log('🎮 Pixel art image generated via OpenAI DALL-E 2');
+        if (fallbackResponse.data.data?.[0]?.url) {
+          const imageUrl = fallbackResponse.data.data[0].url;
+          console.log('🎮 Fallback geometric pixel art generated:', imageUrl);
+          
+          res.json({
+            success: true,
+            imageUrl: imageUrl,
+            prompt: 'geometric abstract pattern (fallback)',
+            generationMethod: 'openai-dalle3-fallback',
+            timestamp: new Date().toISOString()
+          });
+        } else {
+          throw new Error('Fallback also failed');
         }
-      } catch (dalle2Error) {
-        console.log('❌ OpenAI DALL-E 2 failed:', dalle2Error.response?.data || dalle2Error.message);
+      } catch (fallbackError) {
+        console.log('❌ Fallback also failed:', fallbackError.message);
+        
+        res.status(500).json({
+          success: false,
+          error: 'Nepodařilo se vygenerovat pixel art obrázek: ' + (openaiError.response?.data?.error?.message || openaiError.message)
+        });
       }
     }
-
-    if (!imageUrl) {
-      console.log('❌ All AI image generation methods failed, using placeholder');
-      imageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
-      generationMethod = 'placeholder';
-    }
-    
-    res.json({
-      success: true,
-      imageUrl: imageUrl,
-      prompt: prompt,
-      generationMethod: generationMethod,
-      timestamp: new Date().toISOString()
-    });
 
   } catch (error) {
     console.error('❌ Image generation error:', error);
@@ -225,7 +222,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// OPRAVA: Instagram carousel endpoint s vyčištěním markdown z promptů
+// OPRAVA: Instagram carousel endpoint pouze s ChatGPT obrázky
 app.post('/api/instagram-image', async (req, res) => {
   try {
     const { selectedText } = req.body;
@@ -285,21 +282,21 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 3. OPRAVA: Vygeneruj stručný popis pro pixel art - ČISTÝ TEXT bez markdown
+    // 3. OPRAVA: Vygeneruj BEZPEČNÝ popis pro pixel art
     const imageDescriptionResponse = await axios.post('https://api.perplexity.ai/chat/completions', {
       model: 'llama-3.1-sonar-small-128k-online',
       messages: [
         { 
           role: 'system', 
-          content: 'Na základě textu identifikuj HLAVNÍ postavu, osobu, objekt nebo místo a vytvoř velmi stručný popis v angličtině (max 6 slov). Zaměř se pouze na tu nejdůležitější věc z textu. NEPOUŽÍVEJ ŽÁDNÉ markdown značky jako **, *, #, _, ---. Nepoužívaj dvojtečky, pomlčky nebo speciální znaky. Odpověz pouze prostými slovy. Příklady: "businessman in suit", "mountain landscape", "racing car", "medieval castle".' 
+          content: 'Na základě textu identifikuj NEUTRÁLNÍ objekt, budovu, krajinu nebo abstraktní koncept pro pixel art ilustraci. Vytvoř velmi stručný popis v angličtině (max 4 slova). NEPOUŽÍVEJ politické osobnosti, zbraně, násilí, útoky nebo kontroverzní témata. Zaměř se na neutrální vizuální prvky. Příklady: "office building", "city skyline", "abstract pattern", "geometric shapes", "retro computer".' 
         },
         { 
           role: 'user', 
-          content: `Identifikuj hlavní postavu/věc z tohoto textu a popiš ji stručně: "${selectedText}"` 
+          content: `Vytvoř neutrální pixel art popis pro: "${selectedText}"` 
         }
       ],
       temperature: 0.6,
-      max_tokens: 20
+      max_tokens: 15
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
@@ -331,7 +328,7 @@ app.post('/api/instagram-image', async (req, res) => {
       timeout: 30000
     });
 
-    // 5. OPRAVA: Vyčisti mainSubject od markdown a vytvoř pixel art prompt
+    // 5. OPRAVA: Vyčisti mainSubject a vytvoř bezpečný pixel art prompt
     let mainSubject = imageDescriptionResponse.data.choices[0].message.content.trim();
     
     // OPRAVA: Agresivní čištění markdown a speciálních znaků
@@ -372,53 +369,101 @@ app.post('/api/instagram-image', async (req, res) => {
       .replace(/\s+/g, ' ')  // Nahraď více mezer jednou
       .trim();               // Odstraň mezery na začátku/konci
     
-    // OPRAVA: Pokud je mainSubject prázdný nebo moc krátký, použij fallback
-    if (!mainSubject || mainSubject.length < 3) {
-      mainSubject = 'person in business suit';
-      console.log('⚠️ Using fallback mainSubject:', mainSubject);
+    // OPRAVA: Bezpečnostní filtry pro OpenAI
+    const problematicWords = [
+      'trump', 'biden', 'putin', 'president', 'politician', 'politik',
+      'war', 'attack', 'bomb', 'weapon', 'gun', 'violence', 'kill',
+      'útok', 'válka', 'bomba', 'zbraň', 'násilí', 'zabít', 'smrt',
+      'nuclear', 'jaderný', 'military', 'army', 'soldier', 'voják',
+      'terrorist', 'terorista', 'explosion', 'výbuch', 'blood', 'krev'
+    ];
+    
+    // Kontrola problematických slov
+    const lowerSubject = mainSubject.toLowerCase();
+    const hasProblematicWord = problematicWords.some(word => 
+      lowerSubject.includes(word.toLowerCase())
+    );
+    
+    if (hasProblematicWord || !mainSubject || mainSubject.length < 3) {
+      console.log('⚠️ Using safe fallback subject due to problematic content');
+      mainSubject = 'geometric abstract pattern';
     }
     
-    // OPRAVA: Vytvoř čistý pixel art prompt bez problematických znaků
-    const pixelArtPrompt = `${mainSubject}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic`;
+    // OPRAVA: Vytvoř bezpečný pixel art prompt
+    const pixelArtPrompt = `${mainSubject}, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, crisp pixel work, detailed pixel graphics, classic video game style, blocky visuals, pixelated illustration, 8-bit aesthetic, digital art`;
     
-    console.log('🎮 Cleaned mainSubject:', mainSubject);
-    console.log('🎮 Final pixel art prompt:', pixelArtPrompt);
+    console.log('🎮 Safe mainSubject:', mainSubject);
+    console.log('🎮 Safe pixel art prompt:', pixelArtPrompt);
     
     let backgroundImageUrl = null;
     
-    if (process.env.OPENAI_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: 'OpenAI API klíč není nastaven - nelze generovat obrázky'
+      });
+    }
+
+    try {
+      console.log('🎮 Generating safe pixel art with ChatGPT...');
+      
+      const imageResponse = await axios.post('https://api.openai.com/v1/images/generations', {
+        model: 'dall-e-3',
+        prompt: pixelArtPrompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'hd',
+        style: 'vivid'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 120000
+      });
+
+      if (imageResponse.data.data?.[0]?.url) {
+        backgroundImageUrl = imageResponse.data.data[0].url;
+        console.log('🎮 Safe pixel art illustration generated successfully:', backgroundImageUrl);
+      } else {
+        throw new Error('No image URL in response');
+      }
+    } catch (imageError) {
+      console.log('❌ Image generation failed:', imageError.response?.data || imageError.message);
+      
+      // OPRAVA: Pokus o jednodušší fallback prompt
       try {
-        console.log('🎮 Generating pixel art with cleaned prompt...');
+        console.log('🔄 Trying simple geometric pixel art as fallback...');
         
-        const imageResponse = await axios.post('https://api.openai.com/v1/images/generations', {
+        const fallbackResponse = await axios.post('https://api.openai.com/v1/images/generations', {
           model: 'dall-e-3',
-          prompt: pixelArtPrompt,
+          prompt: 'geometric abstract pattern, 16-bit pixel art style, retro gaming aesthetic, vibrant colors, simple shapes, blocky visuals, 8-bit aesthetic',
           n: 1,
           size: '1024x1024',
-          quality: 'hd',
+          quality: 'standard',
           style: 'vivid'
         }, {
           headers: {
             'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
             'Content-Type': 'application/json'
           },
-          timeout: 120000
+          timeout: 60000
         });
 
-        if (imageResponse.data.data?.[0]?.url) {
-          backgroundImageUrl = imageResponse.data.data[0].url;
-          console.log('🎮 Pixel art illustration generated successfully:', backgroundImageUrl);
+        if (fallbackResponse.data.data?.[0]?.url) {
+          backgroundImageUrl = fallbackResponse.data.data[0].url;
+          console.log('🎮 Fallback geometric pixel art generated:', backgroundImageUrl);
+        } else {
+          throw new Error('Fallback failed - no image URL');
         }
-      } catch (imageError) {
-        console.log('❌ Image generation failed:', imageError.response?.data || imageError.message);
+      } catch (fallbackError) {
+        console.log('❌ Fallback also failed:', fallbackError.message);
         
-        // OPRAVA: Lepší fallback handling
-        console.log('🔄 Using placeholder image as fallback');
-        backgroundImageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
+        return res.status(500).json({
+          success: false,
+          error: 'Nepodařilo se vygenerovat pixel art obrázek: ' + (imageError.response?.data?.error?.message || imageError.message)
+        });
       }
-    } else {
-      console.log('⚠️ No OpenAI API key, using placeholder');
-      backgroundImageUrl = `https://picsum.photos/1080/1350?random=${Date.now()}`;
     }
 
     // Vyčisti text od markdown značek
@@ -447,11 +492,11 @@ app.post('/api/instagram-image', async (req, res) => {
     let hashtags = hashtagsResponse.data.choices[0].message.content.trim();
     hashtags = hashtags.split(/\s+/).filter(tag => tag.startsWith('#')).join(' ');
     
-    console.log('🎮 Generated Instagram carousel with CLEANED PIXEL ART:', {
+    console.log('🎮 Generated SAFE Instagram carousel with ChatGPT PIXEL ART:', {
       title: title,
       text: slideText,
       hashtags: hashtags,
-      cleanedMainSubject: mainSubject,
+      safeMainSubject: mainSubject,
       pixelArtPrompt: pixelArtPrompt,
       backgroundImage: backgroundImageUrl
     });
@@ -463,7 +508,7 @@ app.post('/api/instagram-image', async (req, res) => {
       hashtags: hashtags,
       backgroundImageUrl: backgroundImageUrl,
       imageDescription: pixelArtPrompt,
-      action: 'instagram-carousel-pixel-art-cleaned',
+      action: 'instagram-carousel-chatgpt-only',
       timestamp: new Date().toISOString()
     });
 
@@ -714,5 +759,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🎨 Stability AI: ${process.env.STABILITY_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🎮 Instagram: Pixel art ilustrace s vyčištěnými prompty`);
+  console.log(`🎮 Instagram: POUZE ChatGPT pixel art obrázky - žádné picsum.photos!`);
 });
