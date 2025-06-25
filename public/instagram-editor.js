@@ -84,11 +84,13 @@ class InstagramCarouselEditor {
         this.textColorPicker?.addEventListener('change', () => this.updateCurrentSlide());
         this.backgroundColorPicker?.addEventListener('change', () => this.updateCurrentSlide());
         this.textOpacity?.addEventListener('input', (e) => {
-            this.opacityValue.textContent = e.target.value + '%';
+            if (this.opacityValue) {
+                this.opacityValue.textContent = e.target.value + '%';
+            }
             this.updateCurrentSlide();
         });
         
-        // Image generation
+        // Image generation - OPRAVA: Přesné prompty
         this.generateChatGPTBtn?.addEventListener('click', () => this.generateImage('chatgpt'));
         this.generateGeminiBtn?.addEventListener('click', () => this.generateImage('gemini'));
         this.removeImageBtn?.addEventListener('click', () => this.removeBackgroundImage());
@@ -118,7 +120,9 @@ class InstagramCarouselEditor {
         this.slides = [];
         this.currentSlideIndex = -1;
         this.currentCarouselId = null;
-        this.carouselTitle.textContent = 'New Instagram Carousel';
+        if (this.carouselTitle) {
+            this.carouselTitle.textContent = 'New Instagram Carousel';
+        }
         this.updateUI();
         this.showNotification('New carousel created');
     }
@@ -159,7 +163,9 @@ class InstagramCarouselEditor {
         this.currentSlideIndex = index;
         this.loadSlideToEditor();
         this.updateSlidesDisplay();
-        this.slideEditorPanel.style.display = 'block';
+        if (this.slideEditorPanel) {
+            this.slideEditorPanel.style.display = 'block';
+        }
     }
     
     saveCurrentSlideData() {
@@ -186,7 +192,9 @@ class InstagramCarouselEditor {
             if (this.backgroundColorPicker) this.backgroundColorPicker.value = slide.backgroundColor;
             if (this.textOpacity) {
                 this.textOpacity.value = slide.textOpacity;
-                this.opacityValue.textContent = slide.textOpacity + '%';
+                if (this.opacityValue) {
+                    this.opacityValue.textContent = slide.textOpacity + '%';
+                }
             }
             if (this.imagePrompt) this.imagePrompt.value = slide.imagePrompt;
         }
@@ -212,7 +220,9 @@ class InstagramCarouselEditor {
             if (this.currentSlideIndex >= 0) {
                 this.selectSlide(this.currentSlideIndex);
             } else {
-                this.slideEditorPanel.style.display = 'none';
+                if (this.slideEditorPanel) {
+                    this.slideEditorPanel.style.display = 'none';
+                }
             }
             
             this.showNotification('Slide deleted');
@@ -234,6 +244,8 @@ class InstagramCarouselEditor {
     }
     
     updateSlidesDisplay() {
+        if (!this.slidesContainer) return;
+        
         if (this.slides.length === 0) {
             this.slidesContainer.innerHTML = `
                 <div class="empty-state">
@@ -301,11 +313,12 @@ class InstagramCarouselEditor {
     }
     
     updateCarouselTitle() {
-        if (this.slides.length === 0) {
+        if (this.slides.length === 0 && this.carouselTitle) {
             this.carouselTitle.textContent = 'New Instagram Carousel';
         }
     }
     
+    // OPRAVA: Generování obrázků s přesným promptem
     async generateImage(provider) {
         const prompt = this.imagePrompt?.value?.trim();
         if (!prompt) {
@@ -313,20 +326,21 @@ class InstagramCarouselEditor {
             return;
         }
         
-        console.log(`🎨 Generating image with ${provider}...`);
+        console.log(`🎨 Generating image with ${provider} using EXACT prompt: "${prompt}"`);
         
         this.showLoading(`Generating image with ${provider.toUpperCase()}...`);
         
         try {
             const endpoint = provider === 'chatgpt' ? '/api/generate-image' : '/api/generate-image-gemini';
             
+            // OPRAVA: Posílá se přesně zadaný prompt bez přidávání textu
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    prompt: prompt + ', high quality, detailed, vibrant colors, Instagram-worthy'
+                    prompt: prompt // Pouze původní prompt, bez přidávání
                 })
             });
             
@@ -338,6 +352,7 @@ class InstagramCarouselEditor {
                     this.updateSlidesDisplay();
                 }
                 this.showNotification(`Image generated with ${provider.toUpperCase()}`);
+                console.log(`✅ Image generated successfully with exact prompt: "${prompt}"`);
             } else {
                 throw new Error(data.error || 'Failed to generate image');
             }
@@ -372,28 +387,38 @@ class InstagramCarouselEditor {
     toggleFormat(format) {
         // Simple text formatting - in a real app you'd implement rich text editing
         const btn = document.querySelector(`[data-format="${format}"]`);
-        btn.classList.toggle('active');
+        if (btn) {
+            btn.classList.toggle('active');
+        }
         this.showNotification(`${format} formatting toggled`);
     }
     
     showSaveModal() {
         this.saveCurrentSlideData();
-        this.saveModal.classList.remove('hidden');
-        this.carouselNameInput.focus();
-        
-        // Suggest a name
-        const suggestedName = `Carousel ${new Date().toLocaleDateString()}`;
-        this.carouselNameInput.value = suggestedName;
-        this.carouselNameInput.select();
+        if (this.saveModal) {
+            this.saveModal.classList.remove('hidden');
+        }
+        if (this.carouselNameInput) {
+            this.carouselNameInput.focus();
+            
+            // Suggest a name
+            const suggestedName = `Carousel ${new Date().toLocaleDateString()}`;
+            this.carouselNameInput.value = suggestedName;
+            this.carouselNameInput.select();
+        }
     }
     
     hideSaveModal() {
-        this.saveModal.classList.add('hidden');
-        this.carouselNameInput.value = '';
+        if (this.saveModal) {
+            this.saveModal.classList.add('hidden');
+        }
+        if (this.carouselNameInput) {
+            this.carouselNameInput.value = '';
+        }
     }
     
     saveCarousel() {
-        const name = this.carouselNameInput.value.trim();
+        const name = this.carouselNameInput?.value?.trim();
         if (!name) {
             this.showNotification('Enter carousel name', 'error');
             return;
@@ -432,7 +457,9 @@ class InstagramCarouselEditor {
         
         localStorage.setItem('instagramCarousels', JSON.stringify(carousels));
         
-        this.carouselTitle.textContent = name;
+        if (this.carouselTitle) {
+            this.carouselTitle.textContent = name;
+        }
         this.hideSaveModal();
         this.loadCarouselsList();
         this.showNotification(`Carousel "${name}" saved`);
@@ -444,14 +471,18 @@ class InstagramCarouselEditor {
         this.currentCarouselId = carousel.id;
         this.slides = carousel.slides || [];
         this.currentSlideIndex = this.slides.length > 0 ? 0 : -1;
-        this.carouselTitle.textContent = carousel.name;
+        if (this.carouselTitle) {
+            this.carouselTitle.textContent = carousel.name;
+        }
         
         this.updateUI();
         
         if (this.currentSlideIndex >= 0) {
             this.selectSlide(this.currentSlideIndex);
         } else {
-            this.slideEditorPanel.style.display = 'none';
+            if (this.slideEditorPanel) {
+                this.slideEditorPanel.style.display = 'none';
+            }
         }
         
         this.showNotification(`Carousel "${carousel.name}" loaded`);
@@ -566,6 +597,8 @@ class InstagramCarouselEditor {
     }
     
     loadCarouselsList() {
+        if (!this.carouselsList) return;
+        
         const carousels = this.getSavedCarousels();
         
         if (carousels.length === 0) {
@@ -622,12 +655,18 @@ class InstagramCarouselEditor {
     }
     
     showLoading(text = 'Processing...') {
-        this.loadingText.textContent = text;
-        this.loadingOverlay.classList.remove('hidden');
+        if (this.loadingText) {
+            this.loadingText.textContent = text;
+        }
+        if (this.loadingOverlay) {
+            this.loadingOverlay.classList.remove('hidden');
+        }
     }
     
     hideLoading() {
-        this.loadingOverlay.classList.add('hidden');
+        if (this.loadingOverlay) {
+            this.loadingOverlay.classList.add('hidden');
+        }
     }
     
     showNotification(message, type = 'success') {
