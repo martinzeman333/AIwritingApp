@@ -52,7 +52,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// NOVÉ: Google Imagen 4 přes Replicate
+// OPRAVA: Google Imagen 4 přes Replicate se správným endpointem
 app.post('/api/generate-image-imagen4', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -74,49 +74,34 @@ app.post('/api/generate-image-imagen4', async (req, res) => {
     }
 
     try {
-      // Spusť Google Imagen 4 přes Replicate
-      const response = await axios.post('https://api.replicate.com/v1/predictions', {
-        version: "google/imagen-4:latest", // Nejnovější verze Google Imagen 4
+      // OPRAVA: Správný endpoint podle oficiální dokumentace
+      const response = await axios.post('https://api.replicate.com/v1/models/google/imagen-4/predictions', {
         input: {
           prompt: prompt,
-          width: 1024,
-          height: 1024,
-          num_inference_steps: 30,
-          guidance_scale: 7.5
+          aspect_ratio: "1:1", // Podporované: "1:1", "3:4", "4:3", "9:16", "16:9"
+          safety_filter_level: "block_medium_and_above" // Podle dokumentace
         }
       }, {
         headers: {
-          'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'wait' // Čeká na dokončení podle dokumentace
         },
-        timeout: 10000
+        timeout: 120000 // 2 minuty timeout
       });
 
-      const predictionId = response.data.id;
-      console.log('🎨 Google Imagen 4 prediction started:', predictionId);
-
-      // Čekej na dokončení
-      let prediction = response.data;
-      let attempts = 0;
-      const maxAttempts = 60; // 2 minuty
-
-      while ((prediction.status === 'starting' || prediction.status === 'processing') && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        attempts++;
-
-        const checkResponse = await axios.get(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-          headers: { 
-            'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}` 
-          },
-          timeout: 5000
-        });
-        
-        prediction = checkResponse.data;
-        console.log(`🎨 Google Imagen 4 status (${attempts}/${maxAttempts}):`, prediction.status);
+      // Podle search results může response obsahovat přímo URL nebo prediction object
+      let imageUrl = null;
+      
+      if (response.data.output && Array.isArray(response.data.output)) {
+        imageUrl = response.data.output[0];
+      } else if (response.data.output) {
+        imageUrl = response.data.output;
+      } else if (response.data.urls && response.data.urls.get) {
+        imageUrl = response.data.urls.get;
       }
 
-      if (prediction.status === 'succeeded' && prediction.output && prediction.output.length > 0) {
-        const imageUrl = prediction.output[0];
+      if (imageUrl) {
         console.log('🎨 Google Imagen 4 image generated successfully:', imageUrl);
         
         res.json({
@@ -127,29 +112,99 @@ app.post('/api/generate-image-imagen4', async (req, res) => {
           generationMethod: 'google-imagen4-replicate',
           model: 'google/imagen-4',
           quality: 'high',
-          restrictions: 'none',
+          restrictions: 'minimal',
           timestamp: new Date().toISOString()
         });
-      } else if (prediction.status === 'failed') {
-        throw new Error(`Google Imagen 4 failed: ${prediction.error || 'Unknown error'}`);
       } else {
-        throw new Error(`Google Imagen 4 timeout after ${maxAttempts * 2} seconds`);
+        throw new Error('No image URL in response: ' + JSON.stringify(response.data));
       }
 
     } catch (replicateError) {
-      console.log('❌ Google Imagen 4 failed:', replicateError.response?.data || replicateError.message);
+      console.log('❌ Google Imagen 4 failed, trying Gemini 2.0 Flash native as fallback...');
       
-      res.status(500).json({
-        success: false,
-        error: 'Google Imagen 4 generování selhalo: ' + (replicateError.response?.data?.detail || replicateError.message)
-      });
+      // FALLBACK: Gemini 2.0 Flash nativní generování podle search results
+      try {
+        if (!process.env.GEMINI_API_KEY) {
+          throw new Error('Gemini API key not available for fallback');
+        }
+
+        console.log('🔮 Using Gemini 2.0 Flash native image generation as fallback...');
+        
+        const geminiResponse = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            responseModalities: ["TEXT", "IMAGE"]
+          }
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
+        });
+
+        if (geminiResponse.data.candidates?.[0]?.content?.parts) {
+          const parts = geminiResponse.data.candidates[0].content.parts;
+          let imageData = null;
+
+          for (const part of parts) {
+            if (part.inlineData) {
+              imageData = part.inlineData.data;
+              break;
+            }
+          }
+
+          if (imageData) {
+            const imageUrl = `data:image/png;base64,${imageData}`;
+            console.log('🔮 Gemini 2.0 Flash native image generated successfully as fallback');
+            
+            res.json({
+              success: true,
+              imageUrl: imageUrl,
+              prompt: prompt,
+              usedPrompt: prompt,
+              generationMethod: 'gemini-2.0-flash-native-fallback',
+              model: 'gemini-2.0-flash-exp',
+              quality: 'high',
+              restrictions: 'minimal',
+              timestamp: new Date().toISOString()
+            });
+          } else {
+            throw new Error('No image data in Gemini response');
+          }
+        } else {
+          throw new Error('Invalid Gemini response structure');
+        }
+
+      } catch (geminiError) {
+        console.log('❌ Gemini fallback also failed:', geminiError.message);
+        
+        // Detailní error handling
+        let errorMessage = 'Both Google Imagen 4 and Gemini fallback failed';
+        
+        if (replicateError.response?.data?.detail) {
+          errorMessage = 'Google Imagen 4: ' + replicateError.response.data.detail;
+        } else if (replicateError.response?.data?.title) {
+          errorMessage = 'Google Imagen 4: ' + replicateError.response.data.title;
+        } else {
+          errorMessage = 'Google Imagen 4: ' + replicateError.message;
+        }
+        
+        res.status(500).json({
+          success: false,
+          error: errorMessage
+        });
+      }
     }
 
   } catch (error) {
-    console.error('❌ Google Imagen 4 error:', error);
+    console.error('❌ Image generation error:', error);
     res.status(500).json({
       success: false,
-      error: 'Chyba při generování přes Google Imagen 4: ' + error.message
+      error: 'Chyba při generování obrázku: ' + error.message
     });
   }
 });
@@ -647,6 +702,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔄 Replicate: ${process.env.REPLICATE_API_TOKEN ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🔮 Gemini API: ${process.env.GEMINI_API_KEY ? 'nastaven' : 'CHYBÍ!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🎨 Image Generation: Google Imagen 4 via Replicate (no restrictions)!`);
-  console.log(`📱 Instagram Editor: Google Imagen 4 pro generování obrázků`);
+  console.log(`🎨 Image Generation: Google Imagen 4 + Gemini 2.0 Flash fallback!`);
+  console.log(`📱 Instagram Editor: Dvojitá ochrana - Imagen 4 + Gemini fallback`);
 });
