@@ -747,4 +747,15 @@ document.addEventListener('DOMContentLoaded', () => {
 window.debugCarousel = function() {
     console.log('🐛 Current carousel state:', {
         slides: editor?.slides,
-        currentSlideIndex: editor?.
+        currentSlideIndex: editor?.currentSlideIndex,
+        currentCarouselId: editor?.currentCarouselId
+    });
+};
+
+window.clearCarousels = function() {
+    localStorage.removeItem('instagramCarousels');
+    console.log('🗑️ All carousels cleared from localStorage');
+    if (editor) {
+        editor.loadCarouselsList();
+    }
+};
