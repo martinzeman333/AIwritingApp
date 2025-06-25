@@ -46,10 +46,14 @@ class InstagramCarouselEditor {
         this.textOpacity = document.getElementById('textOpacity');
         this.opacityValue = document.getElementById('opacityValue');
         this.imagePrompt = document.getElementById('imagePrompt');
-        this.generateChatGPTBtn = document.getElementById('generateChatGPTBtn');
-        this.generateGeminiBtn = document.getElementById('generateGeminiBtn');
-        this.generateReplicateBtn = document.getElementById('generateReplicateBtn');
+        
+        // UPRAVENO: Pouze Replicate tlačítko
+        this.generateImageBtn = document.getElementById('generateImageBtn');
         this.removeImageBtn = document.getElementById('removeImageBtn');
+        
+        // Upload elements
+        this.imageUpload = document.getElementById('imageUpload');
+        this.uploadImageBtn = document.getElementById('uploadImageBtn');
         
         // Carousels list
         this.carouselsList = document.getElementById('carouselsList');
@@ -91,11 +95,13 @@ class InstagramCarouselEditor {
             this.updateCurrentSlide();
         });
         
-        // Image generation - všechny tři možnosti
-        this.generateChatGPTBtn?.addEventListener('click', () => this.generateImage('chatgpt'));
-        this.generateGeminiBtn?.addEventListener('click', () => this.generateImage('gemini'));
-        this.generateReplicateBtn?.addEventListener('click', () => this.generateImage('replicate'));
+        // UPRAVENO: Pouze jedno tlačítko pro generování
+        this.generateImageBtn?.addEventListener('click', () => this.generateImage());
         this.removeImageBtn?.addEventListener('click', () => this.removeBackgroundImage());
+        
+        // Image upload
+        this.uploadImageBtn?.addEventListener('click', () => this.imageUpload?.click());
+        this.imageUpload?.addEventListener('change', (e) => this.handleImageUpload(e));
         
         // Tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -115,6 +121,37 @@ class InstagramCarouselEditor {
         document.querySelectorAll('.section-item[data-filter]').forEach(item => {
             item.addEventListener('click', (e) => this.handleFilterClick(e));
         });
+    }
+    
+    // Upload obrázku
+    handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            this.showNotification('Please select an image file', 'error');
+            return;
+        }
+        
+        console.log('📁 Uploading image:', file.name);
+        this.showLoading('Uploading image...');
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (this.currentSlideIndex >= 0) {
+                this.slides[this.currentSlideIndex].backgroundImage = e.target.result;
+                this.updateSlidesDisplay();
+                this.showNotification('Image uploaded successfully');
+            }
+            this.hideLoading();
+        };
+        
+        reader.onerror = () => {
+            this.showNotification('Failed to upload image', 'error');
+            this.hideLoading();
+        };
+        
+        reader.readAsDataURL(file);
     }
     
     createNewCarousel() {
@@ -258,7 +295,6 @@ class InstagramCarouselEditor {
                 </div>
             `;
             
-            // Re-attach event listener
             const addFirstBtn = document.getElementById('addFirstSlideBtn');
             if (addFirstBtn) {
                 addFirstBtn.addEventListener('click', () => this.addSlide());
@@ -287,7 +323,6 @@ class InstagramCarouselEditor {
             </div>
         `).join('');
         
-        // Add click listeners to slides
         document.querySelectorAll('.slide-preview').forEach((element, index) => {
             element.addEventListener('click', () => this.selectSlide(index));
         });
@@ -307,7 +342,6 @@ class InstagramCarouselEditor {
             this.slideCounter.textContent = `${this.currentSlideIndex + 1} / ${this.slides.length}`;
         }
         
-        // Update slides count in header
         const slidesCount = document.querySelector('.slides-count');
         if (slidesCount) {
             slidesCount.textContent = `${this.slides.length} Slides`;
@@ -320,40 +354,20 @@ class InstagramCarouselEditor {
         }
     }
     
-    // Generování obrázků s podporou všech tří API
-    async generateImage(provider) {
+    // UPRAVENO: Pouze Replicate s Google Imagen 4
+    async generateImage() {
         const prompt = this.imagePrompt?.value?.trim();
         if (!prompt) {
             this.showNotification('Enter image description first', 'error');
             return;
         }
         
-        console.log(`🎨 Generating image with ${provider} using EXACT prompt: "${prompt}"`);
+        console.log(`🎨 Generating image with Google Imagen 4 via Replicate: "${prompt}"`);
         
-        let loadingText = `Generating image with ${provider.toUpperCase()}...`;
-        if (provider === 'replicate') {
-            loadingText += ' (No restrictions - may take 30-60 seconds)';
-        }
-        
-        this.showLoading(loadingText);
+        this.showLoading('Generating image with Google Imagen 4... (may take 30-60 seconds)');
         
         try {
-            let endpoint;
-            switch(provider) {
-                case 'chatgpt':
-                    endpoint = '/api/generate-image';
-                    break;
-                case 'gemini':
-                    endpoint = '/api/generate-image-gemini';
-                    break;
-                case 'replicate':
-                    endpoint = '/api/generate-image-replicate';
-                    break;
-                default:
-                    endpoint = '/api/generate-image';
-            }
-            
-            const response = await fetch(endpoint, {
+            const response = await fetch('/api/generate-image-imagen4', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -371,13 +385,8 @@ class InstagramCarouselEditor {
                     this.updateSlidesDisplay();
                 }
                 
-                let successMessage = `Image generated with ${provider.toUpperCase()}`;
-                if (data.restrictions) {
-                    successMessage += ` (${data.restrictions})`;
-                }
-                
-                this.showNotification(successMessage);
-                console.log(`✅ Image generated successfully with: "${prompt}"`);
+                this.showNotification('Image generated with Google Imagen 4');
+                console.log(`✅ Image generated successfully with Google Imagen 4: "${prompt}"`);
             } else {
                 throw new Error(data.error || 'Failed to generate image');
             }
@@ -398,19 +407,16 @@ class InstagramCarouselEditor {
     }
     
     switchTab(tabName) {
-        // Update tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tabName);
         });
         
-        // Update tab content
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.toggle('active', content.id === tabName + 'Tab');
         });
     }
     
     toggleFormat(format) {
-        // Simple text formatting - in a real app you'd implement rich text editing
         const btn = document.querySelector(`[data-format="${format}"]`);
         if (btn) {
             btn.classList.toggle('active');
@@ -426,7 +432,6 @@ class InstagramCarouselEditor {
         if (this.carouselNameInput) {
             this.carouselNameInput.focus();
             
-            // Suggest a name
             const suggestedName = `Carousel ${new Date().toLocaleDateString()}`;
             this.carouselNameInput.value = suggestedName;
             this.carouselNameInput.select();
@@ -469,13 +474,11 @@ class InstagramCarouselEditor {
         const carousels = this.getSavedCarousels();
         
         if (this.currentCarouselId) {
-            // Update existing
             const index = carousels.findIndex(c => c.id === this.currentCarouselId);
             if (index !== -1) {
                 carousels[index] = { ...carousels[index], ...carousel };
             }
         } else {
-            // Create new
             this.currentCarouselId = carousel.id;
             carousels.unshift(carousel);
         }
@@ -513,6 +516,7 @@ class InstagramCarouselEditor {
         this.showNotification(`Carousel "${carousel.name}" loaded`);
     }
     
+    // Export funkce
     exportCarousel() {
         if (this.slides.length === 0) {
             this.showNotification('No slides to export', 'error');
@@ -520,10 +524,8 @@ class InstagramCarouselEditor {
         }
         
         console.log('📤 Exporting carousel...');
-        
         this.saveCurrentSlideData();
         
-        // Create download for each slide
         this.slides.forEach((slide, index) => {
             this.downloadSlide(slide, index + 1);
         });
@@ -534,10 +536,9 @@ class InstagramCarouselEditor {
     downloadSlide(slide, slideNumber) {
         const canvas = document.createElement('canvas');
         canvas.width = 1080;
-        canvas.height = 1350;
+        canvas.height = 1350; // Instagram post ratio
         const ctx = canvas.getContext('2d');
         
-        // Background
         if (slide.backgroundImage) {
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -567,58 +568,103 @@ class InstagramCarouselEditor {
     drawTextOnCanvas(ctx, slide, width, height) {
         if (!slide.text) return;
         
-        const fontSize = parseInt(slide.textSize) * 3; // Scale for high resolution
+        const fontSize = parseInt(slide.textSize) * 2.5;
         ctx.font = `${fontSize}px Arial, sans-serif`;
-        ctx.fillStyle = slide.textColor;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Text background
-        const opacity = slide.textOpacity / 100;
-        ctx.fillStyle = `rgba(0,0,0,${opacity})`;
-        
-        const textMetrics = ctx.measureText(slide.text);
-        const textWidth = textMetrics.width;
-        const textHeight = fontSize;
+        const maxWidth = width * 0.8;
+        const lineHeight = fontSize * 1.2;
+        const lines = this.wrapText(ctx, slide.text, maxWidth);
         
         let x, y;
+        const totalTextHeight = lines.length * lineHeight;
         
         switch (slide.textPosition) {
             case 'center':
                 x = width / 2;
-                y = height / 2;
+                y = height / 2 - (totalTextHeight / 2) + (lineHeight / 2);
                 break;
             case 'top':
                 x = width / 2;
-                y = textHeight + 100;
+                y = lineHeight + 50;
                 break;
             case 'bottom':
                 x = width / 2;
-                y = height - textHeight - 100;
+                y = height - totalTextHeight - 50;
                 break;
             case 'left':
-                x = textWidth / 2 + 100;
-                y = height / 2;
+                x = width * 0.1;
+                y = height / 2 - (totalTextHeight / 2) + (lineHeight / 2);
+                ctx.textAlign = 'left';
                 break;
             case 'right':
-                x = width - textWidth / 2 - 100;
-                y = height / 2;
+                x = width * 0.9;
+                y = height / 2 - (totalTextHeight / 2) + (lineHeight / 2);
+                ctx.textAlign = 'right';
                 break;
         }
         
-        // Draw text background
-        ctx.fillRect(x - textWidth / 2 - 40, y - textHeight / 2 - 20, textWidth + 80, textHeight + 40);
+        const opacity = slide.textOpacity / 100;
+        ctx.fillStyle = `rgba(0,0,0,${opacity})`;
         
-        // Draw text
+        lines.forEach((line, index) => {
+            const lineY = y + (index * lineHeight);
+            const textMetrics = ctx.measureText(line);
+            let bgX, bgWidth;
+            
+            switch (slide.textPosition) {
+                case 'left':
+                    bgX = x - 20;
+                    bgWidth = textMetrics.width + 40;
+                    break;
+                case 'right':
+                    bgX = x - textMetrics.width - 20;
+                    bgWidth = textMetrics.width + 40;
+                    break;
+                default:
+                    bgX = x - (textMetrics.width / 2) - 20;
+                    bgWidth = textMetrics.width + 40;
+            }
+            
+            ctx.fillRect(bgX, lineY - (fontSize / 2) - 10, bgWidth, fontSize + 20);
+        });
+        
         ctx.fillStyle = slide.textColor;
-        ctx.fillText(slide.text, x, y);
+        lines.forEach((line, index) => {
+            const lineY = y + (index * lineHeight);
+            ctx.fillText(line, x, lineY);
+        });
+    }
+    
+    wrapText(ctx, text, maxWidth) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = words[0];
+        
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = ctx.measureText(currentLine + ' ' + word).width;
+            
+            if (width < maxWidth) {
+                currentLine += ' ' + word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        lines.push(currentLine);
+        
+        return lines;
     }
     
     downloadCanvas(canvas, filename) {
         const link = document.createElement('a');
         link.download = filename;
         link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
     }
     
     loadCarouselsList() {
@@ -646,7 +692,6 @@ class InstagramCarouselEditor {
             </div>
         `).join('');
         
-        // Add click listeners
         document.querySelectorAll('.carousel-item').forEach(item => {
             item.addEventListener('click', () => {
                 const carousel = carousels.find(c => c.id === item.dataset.id);
